@@ -2,6 +2,19 @@
 Written by Jesse Merritt
 October 1, 2011
 
+   This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 Sends jog commands to an Arduino running grbl
 
 The GUI requires WX.
@@ -135,8 +148,8 @@ class MainWindow(wx.Frame):
         dlg.ShowModal()
         self.OnExit(self)
         
-    def showError(self) :     # Didn't find the board.  
-        dlg = wx.MessageDialog(self, "Bad Data.  The data received was not what was sent!", 'Error!', wx.OK | wx.ICON_ERROR)  
+    def showError(self) :     # Com Error
+        dlg = wx.MessageDialog(self, "Bad Communications", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
       #  self.OnExit(self)
  
@@ -196,11 +209,10 @@ class MainWindow(wx.Frame):
       #self.ser.write("G0 " + axis + " " + str(value) + '\n')
       print dirCommand
       self.ser.write(dirCommand)
+      grbl_response = s.readline() # Wait for grbl response with carriage return
     
 
 app = wx.App(False)         # wx instance
 frame = MainWindow(None)    # main window frame
-
-
 
 app.MainLoop()
