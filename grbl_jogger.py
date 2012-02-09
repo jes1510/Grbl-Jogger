@@ -15,7 +15,9 @@ October 1, 2011
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-Sends jog commands to an Arduino running grbl
+Sends jog commands to an Arduino running grbl.  Builds a very simple G-Code string and 
+sends it to the controller.  Only one move at a time is supported although the controller
+will buffer commands.
 
 The GUI requires WX.
 
@@ -40,25 +42,18 @@ version = "0.1"
 x = 0	# Location of X Axis
 y = 0	# Location of Y Axis
 z = 0	# Location of Z Axis
-
-
-#serialEVT, EVT_SERIAL = wx.lib.newevent.NewEvent()          # this is the notification event to let us know the data has been updated
-'''
-Main window.  Creates all of the frames and binds buttons to functions.  Manages GUI
-'''
+  
 class MainWindow(wx.Frame):
     def __init__(self, parent, title="Grbl_Jogger") :    
         self.parent = parent       
-        mainFrame = wx.Frame.__init__(self,self.parent, title=title, size=(1024,768))         
+        mainFrame = wx.Frame.__init__(self,self.parent, title=title, size=(800,600))         
         
         mainPanel = wx.Panel(self, -1, style=wx.SUNKEN_BORDER)
         
         #   Build sizers and statusbar
         self.topSizer = wx.BoxSizer(wx.HORIZONTAL) 
-        self.buttonSizer = wx.BoxSizer(wx.HORIZONTAL) 
-        
-        self.rootSizer = wx.BoxSizer(wx.VERTICAL)          
-                        
+        self.buttonSizer = wx.BoxSizer(wx.HORIZONTAL)         
+        self.rootSizer = wx.BoxSizer(wx.VERTICAL)                        
         self.CreateStatusBar()                              # statusbar in the bottom of the window                                  
 
         # Setting up the menus
@@ -77,13 +72,15 @@ class MainWindow(wx.Frame):
         menuBar.Append(helpmenu, "Help")
         self.SetMenuBar(menuBar)                            # Adding the MenuBar to the Frame content.
  
-        XPlusButton = wx.Button(mainPanel, -1, 'X+',size=(100,100))
-        XMinusButton = wx.Button(mainPanel, -1, 'X-',size=(100,100))
-        YPlusButton = wx.Button(mainPanel, -1, 'Y+',size=(100,100))
-        YMinusButton = wx.Button(mainPanel, -1, 'Y-',size=(100,100))
-        ZPlusButton = wx.Button(mainPanel, -1, 'Z+',size=(100,100))
-        ZMinusButton = wx.Button(mainPanel, -1, 'Z-',size=(100,100))
+	#	Buttons;  One per direction
+        XPlusButton = wx.Button(mainPanel, -1, 'X+',size=(75,75))
+        XMinusButton = wx.Button(mainPanel, -1, 'X-',size=(75,75))
+        YPlusButton = wx.Button(mainPanel, -1, 'Y+',size=(75,75))
+        YMinusButton = wx.Button(mainPanel, -1, 'Y-',size=(75,75))
+        ZPlusButton = wx.Button(mainPanel, -1, 'Z+',size=(75,75))
+        ZMinusButton = wx.Button(mainPanel, -1, 'Z-',size=(75,75))
         
+        #	Input boxes for distance and speed
         self.distanceLabel = wx.StaticText(mainPanel, 1, "Distance:")
         self.distanceBox = wx.TextCtrl(self)
         self.speedLabel = wx.StaticText(mainPanel, 1, "IPM:")
@@ -93,26 +90,22 @@ class MainWindow(wx.Frame):
         self.topSizer.Add(self.distanceLabel, 1, wx.EXPAND)
         self.topSizer.Add(self.distanceBox, 2, wx.EXPAND)
         self.topSizer.Add(self.speedLabel, 1, wx.EXPAND)
-        self.topSizer.Add(self.speedBox, 2, wx.EXPAND)
-        
+        self.topSizer.Add(self.speedBox, 2, wx.EXPAND)        
         self.buttonSizer.Add(XPlusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(XMinusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(YPlusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(YMinusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(ZPlusButton, 1, wx.EXPAND)
-        self.buttonSizer.Add(ZMinusButton, 1, wx.EXPAND) 
-                
+        self.buttonSizer.Add(ZMinusButton, 1, wx.EXPAND)                 
         self.rootSizer.Add(self.topSizer, 1, wx.EXPAND)
-        self.rootSizer.Add(self.buttonSizer, 4, wx.EXPAND)
-        
+        self.rootSizer.Add(self.buttonSizer, 4, wx.EXPAND)       
 
-        #   Bind events and buttons
-#        self.Bind(EVT_SERIAL, self.updateText)                  # bind the event to a function
+	#	Bind events to buttons
         self.Bind(wx.EVT_CLOSE, self.OnExit)
-#        self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
+#       self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
         self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
-        #self.Bind(wx.EVT_MENU, self.setupPort, menuPorts)
-#        self.Bind(wx.EVT_MENU, self.OnSave, menuSave)
+#       self.Bind(wx.EVT_MENU, self.setupPort, menuPorts)
+#       self.Bind(wx.EVT_MENU, self.OnSave, menuSave)
         self.Bind(wx.EVT_BUTTON, self.XPlus, XPlusButton)
         self.Bind(wx.EVT_BUTTON, self.XMinus, XMinusButton)
         self.Bind(wx.EVT_BUTTON, self.YPlus, YPlusButton)
@@ -125,12 +118,12 @@ class MainWindow(wx.Frame):
         self.SetAutoLayout(1)
         self.rootSizer.Fit(self)     
         
+        #	Set preset values
         self.distanceBox.SetValue('1')
         self.speedBox.SetValue('12')
         
         self.Layout()
 	self.Show(True)
-	
 	
 	
 	try :
@@ -143,12 +136,12 @@ class MainWindow(wx.Frame):
 	self.ser.flushInput()	
 	self.ser.write("G20\n")
 	
-    def showComError(self) :     # Didn't find the board.  
+    def showComError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Could not open COM port!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
-        self.OnExit(self)
+        self.OnExit(self)	#	Dump out
         
-    def showError(self) :     # Com Error
+    def showError(self) :	#	General error.  Not really implemented
         dlg = wx.MessageDialog(self, "Bad Communications", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
       #  self.OnExit(self)
@@ -156,47 +149,45 @@ class MainWindow(wx.Frame):
     def OnExit(self,e):         # stuff to do when the program is ending     
         global ser
         try :
-	  self.ser.close()  
+	  self.ser.close()  	# Needs to be in a try in case it wasn't opened
 	except :
 	  pass
+	
         self.Destroy()              # wipe out windows and dump to the OS
 
-    def XPlus (self, e) :   # # button one
+    def XPlus (self, e) :  	#	Increment X
       global x
-      x = x + round(float(self.distanceBox.GetValue()), 6) 
+      x = x + abs(round(float(self.distanceBox.GetValue()), 6))
       self.sendCommand('x')
      
-    def XMinus (self, e) :
+    def XMinus (self, e) :	#	Decrement X
       global x
-      x = x - round(float(self.distanceBox.GetValue()), 6) 
+      x = x - abs(round(float(self.distanceBox.GetValue()), 6))
       self.sendCommand('x')
       
-    def YPlus (self, e) :
+    def YPlus (self, e) :	#	Increment Y
       global y
-      y = y + round(float(self.distanceBox.GetValue()), 6) 
+      y = y + abs(round(float(self.distanceBox.GetValue()), 6))
       self.sendCommand('y')
     
-    def YMinus (self, e) :
+    def YMinus (self, e) :	#	Decrement Y
       global y
-      y = y - round(float(self.distanceBox.GetValue()), 6) 
+      y = y - abs(round(float(self.distanceBox.GetValue()), 6))
       self.sendCommand('y')
     
-    def ZPLus(self, e) :
+    def ZPLus(self, e) :	#	Increment Z
       global z
-      z = z + round(float(self.distanceBox.GetValue()), 6) 
+      z = z + abs(round(float(self.distanceBox.GetValue()), 6))
       self.sendCommand('z')
     
-    def ZMinus(self, e) :
+    def ZMinus(self, e) :	#	Decrement Z
       global z
-      z = z - round(float(self.distanceBox.GetValue()), 6)     
+      z = z - abs(round(float(self.distanceBox.GetValue()), 6))
       self.sendCommand('z')
     
     def sendCommand(self, axis) :         
       speed = str(int(self.speedBox.GetValue()))
-      speedCommand = "f" + speed + "\n"
-      #self.ser.write("f" + +"\n")
-      #print speedCommand
-      #self.ser.write(speedCommand)
+      speedCommand = "f" + speed + "\n"   
       if axis == 'x' :
 	value = x
 	
@@ -205,11 +196,13 @@ class MainWindow(wx.Frame):
 
       if axis == 'z' :
 	value = z
+	
       dirCommand = "G0 " + "f" + speed + " " + axis + str(value) + "\n"
-      #self.ser.write("G0 " + axis + " " + str(value) + '\n')
-      print dirCommand
+      
       self.ser.write(dirCommand)
-      grbl_response = s.readline() # Wait for grbl response with carriage return
+      grbl_response = self.ser.readline() 	# Wait for grbl response with carriage return
+      
+      print dirCommand.strip() + ": " + grbl_response
     
 
 app = wx.App(False)         # wx instance
