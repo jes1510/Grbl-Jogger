@@ -54,7 +54,7 @@ class MainWindow(wx.Frame):
         self.topSizer = wx.BoxSizer(wx.HORIZONTAL) 
         self.buttonSizer = wx.BoxSizer(wx.HORIZONTAL)         
         self.rootSizer = wx.BoxSizer(wx.VERTICAL)                        
-        self.CreateStatusBar()                              # statusbar in the bottom of the window                                  
+        self.statusBar = self.CreateStatusBar()                              # statusbar in the bottom of the window                                  
 
         # Setting up the menus
         filemenu= wx.Menu()
@@ -127,7 +127,7 @@ class MainWindow(wx.Frame):
 	
 	
 	try :
-	  self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+	  self.ser = serial.Serial('/dev/ttyACM1', 9600, timeout=1)
 	  
 	except :
 	  self.showComError()
@@ -136,15 +136,24 @@ class MainWindow(wx.Frame):
 	self.ser.flushInput()	
 	self.ser.write("G20\n")
 	
+	
+	
     def showComError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Could not open COM port!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
         self.OnExit(self)	#	Dump out
         
-    def showError(self) :	#	General error.  Not really implemented
-        dlg = wx.MessageDialog(self, "Bad Communications", 'Error!', wx.OK | wx.ICON_ERROR)  
+    def showComWriteError(self) :     #	Can't open COM port
+        dlg = wx.MessageDialog(self, "Error writing to Com port!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
-      #  self.OnExit(self)
+        
+    def showComTimeoutError(self) :     #	Can't open COM port
+        dlg = wx.MessageDialog(self, "Controller did not respond!", 'Error!', wx.OK | wx.ICON_ERROR)  
+        dlg.ShowModal() 
+        
+    def showValueError(self) :	#	General error.  Not really implemented
+        dlg = wx.MessageDialog(self, "I need a number!", 'Error!', wx.OK | wx.ICON_ERROR)  
+        dlg.ShowModal()
  
     def OnExit(self,e):         # stuff to do when the program is ending     
         global ser
@@ -154,40 +163,55 @@ class MainWindow(wx.Frame):
 	  pass
 	
         self.Destroy()              # wipe out windows and dump to the OS
+        
+    def readDistance(self) :
+      try :
+	d = abs(round(float(self.distanceBox.GetValue()), 6))
+      	return d
+      	
+      except :	
+	self.showValueError()
+      
 
     def XPlus (self, e) :  	#	Increment X
       global x
-      x = x + abs(round(float(self.distanceBox.GetValue()), 6))
+      x = x + self.readDistance()
       self.sendCommand('x')
      
     def XMinus (self, e) :	#	Decrement X
       global x
-      x = x - abs(round(float(self.distanceBox.GetValue()), 6))
+      x = x - self.readDistance()
       self.sendCommand('x')
       
     def YPlus (self, e) :	#	Increment Y
       global y
-      y = y + abs(round(float(self.distanceBox.GetValue()), 6))
+      y = y + self.readDistance()
       self.sendCommand('y')
     
     def YMinus (self, e) :	#	Decrement Y
       global y
-      y = y - abs(round(float(self.distanceBox.GetValue()), 6))
+      y = y - self.readDistance()
       self.sendCommand('y')
     
     def ZPLus(self, e) :	#	Increment Z
       global z
-      z = z + abs(round(float(self.distanceBox.GetValue()), 6))
+      z = z + self.readDistance()
       self.sendCommand('z')
     
     def ZMinus(self, e) :	#	Decrement Z
       global z
-      z = z - abs(round(float(self.distanceBox.GetValue()), 6))
+      z = z - self.readDistance()
       self.sendCommand('z')
     
-    def sendCommand(self, axis) :         
-      speed = str(int(self.speedBox.GetValue()))
-      speedCommand = "f" + speed + "\n"   
+    def sendCommand(self, axis) :   
+      try :
+	speed = str(int(self.speedBox.GetValue()))
+	speedCommand = "f" + speed + "\n"  
+	
+      except  :
+	self.showValueError()
+	
+       
       if axis == 'x' :
 	value = x
 	
@@ -199,10 +223,18 @@ class MainWindow(wx.Frame):
 	
       dirCommand = "G0 " + "f" + speed + " " + axis + str(value) + "\n"
       
-      self.ser.write(dirCommand)
-      grbl_response = self.ser.readline() 	# Wait for grbl response with carriage return
+      try :
+	self.ser.write(dirCommand)
+      except :
+	self.showComWriteError()
       
-      print dirCommand.strip() + ": " + grbl_response
+      grbl_response = self.ser.readline() 	# Wait for grbl response with carriage return      
+      #print 
+      
+      self.statusBar.SetStatusText("Sent: " + dirCommand.strip() + ": " + "\tReceived: " +grbl_response)
+      
+      if not grbl_response :
+	self.showComTimeoutError()
     
 
 app = wx.App(False)         # wx instance
