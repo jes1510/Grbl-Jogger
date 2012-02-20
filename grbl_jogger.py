@@ -47,17 +47,16 @@ x = 0	# Location of X Axis
 y = 0	# Location of Y Axis
 z = 0	# Location of Z Axis
 
-port = ''
-baud = 0
 
 ser = serial.Serial()
+
   
 serialEVT, EVT_SERIAL = wx.lib.newevent.NewEvent()  
 
 class MainWindow(wx.Frame):
     def __init__(self, parent, title="Grbl_Jogger") :  
 	global baud
-	global port 
+	#global port 
 	
         self.parent = parent 
         self.dirname = '.' 
@@ -360,7 +359,7 @@ class MainWindow(wx.Frame):
 class configSerial(wx.Dialog):
     def __init__(self, parent, id, title = "Configure Serial Port"):
         global ser
-      #  MainWindow(None).dummy(None)
+
 	self.parent= parent
 	self.id = id
 
@@ -447,25 +446,27 @@ class configSerial(wx.Dialog):
 
     def done(self, e) :
         global ser
-        self.port = self.portsCombo.GetValue()
-        self.baud = int(self.baudCombo.GetValue())
-        self.dataBits = int(self.bitsCombo.GetValue())
-        self.parity = self.parityCombo.GetValue()
-        self.stopBit = int(self.stopCombo.GetValue())
+	
+	print "Name: " + port.name
+        port.name = self.portsCombo.GetValue()
+        port.baud = int(self.baudCombo.GetValue())
+        port.dataBits = int(self.bitsCombo.GetValue())
+        port.parity = self.parityCombo.GetValue()
+        port.stopBit = int(self.stopCombo.GetValue())
         self.flowControl = self.flowCombo.GetValue()
 
-        self.rtscts = 0
-        self.xonxoff = 0
+        port.rtscts = 0
+        port.xonxoff = 0
 
         if self.flowControl == "Hardware" :
-            self.rtscts = 1
+            port.rtscts = 1
 
         if self.flowControl == "None" :
-            self.rtscts = 0                
+            port.rtscts = 0                
 
-        if self.port != "No Ports Found" :
-            ser = serial.Serial(port= self.port, baudrate= self.baud, bytesize=self.dataBits, parity= self.parity,\
-            stopbits=self.stopBit, timeout = None, xonxoff= self.xonxoff, rtscts=self.rtscts)
+        if self.ports != "No Ports Found" :
+            ser = serial.Serial(port= port.name, baudrate= port.baud, bytesize=port.dataBits, parity= port.parity,\
+            stopbits=port.stopBit, timeout = None, xonxoff= port.xonxoff, rtscts=port.rtscts)
           #  if ser.isOpen() :
           #      print "Yay from config"
         self.Close(True)
@@ -498,6 +499,18 @@ class configSerial(wx.Dialog):
                 pass
                 
         return self.ports  
+        
+class Port() :		# Dummy class to encapsulate the serial port attributes;  Cleaner than global
+  def __init__(self) : 
+    self.name = ''
+    self.baud = 0
+    self.dataBits = 8
+    self.parity = 'n'
+    self.stopBits = 1
+    self.timeout = 2
+    self.rtscts = 0
+    
+port = Port()
 
 app = wx.App(False)         # wx instance
 frame = MainWindow(None)    # main window frame
