@@ -78,7 +78,7 @@ class MainWindow(wx.Frame):
         self.buttonSizer = wx.BoxSizer(wx.HORIZONTAL) 
         self.buttonSizer2 = wx.BoxSizer(wx.VERTICAL)
         self.editorSizer1 = wx.BoxSizer(wx.VERTICAL) 
-        self.editorSizer2 = wx.BoxSizer(wx.VERTICAL)      
+        self.editorSizer2 = wx.BoxSizer(wx.HORIZONTAL)      
         #self.editorSizer3 = wx.BoxSizer(wx.HORIZONTAL)
         
         self.rootSizer = wx.BoxSizer(wx.VERTICAL)                        
@@ -127,8 +127,7 @@ class MainWindow(wx.Frame):
         self.rootSizer.Add(self.topSizer, 1, wx.EXPAND)
         self.rootSizer.Add(self.buttonSizer, 1, wx.EXPAND)   
         self.rootSizer.Add(self.buttonSizer2, 1, wx.EXPAND) 
-        self.rootSizer.Add(self.editorSizer1, 1, wx.EXPAND)
-        
+        self.rootSizer.Add(self.editorSizer1, 1, wx.EXPAND)        
         self.rootSizer.Add(self.editorSizer2, 1, wx.EXPAND)
        
        # self.rootSizer.Add(self.editorSizer3, 1, wx.EXPAND)
@@ -148,8 +147,12 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.YMinus, YMinusButton)
         self.Bind(wx.EVT_BUTTON, self.ZPLus, ZPlusButton)
         self.Bind(wx.EVT_BUTTON, self.ZMinus, ZMinusButton)
-       #self.Bind(wx.EVT_BUTTON, self.onStart, startButton)
-       # self.Bind(wx.EVT_BUTTON, self.onStop, stopButton)
+        
+        self.Bind(wx.EVT_BUTTON, self.setHome, setHomeButton)
+        self.Bind(wx.EVT_BUTTON, self.resetController, resetButton)
+        
+        self.Bind(wx.EVT_BUTTON, self.onStart, startButton)
+        self.Bind(wx.EVT_BUTTON, self.onStop, stopButton)
         
         
 
@@ -187,10 +190,16 @@ class MainWindow(wx.Frame):
         dlg.Destroy()
 	
     def onStart(self, e) :
-      pass
+      print "Start"
     
     def onStop(self, e) :
-      pass
+      print "Stop"
+      
+    def setHome(self, e) :
+      print "set home"
+      
+    def resetController(self, e) :
+      print "reset Controller"
     
     
     def showComError(self) :     #	Can't open COM port
