@@ -19,6 +19,9 @@ Sends jog commands to an Arduino running grbl.  Builds a very simple G-Code stri
 sends it to the controller.  Only one move at a time is supported although the controller
 will buffer commands.
 
+Here is an awesome wx tutorial I cam acoss while writing this:
+http://wiki.wxpython.org/AnotherTutorial
+
 The GUI requires WX.
 
 The program depends on the following modules:
@@ -44,17 +47,32 @@ y = 0	# Location of Y Axis
 z = 0	# Location of Z Axis
   
 class MainWindow(wx.Frame):
-    def __init__(self, parent, title="Grbl_Jogger") :    
-    
-	self.dirname = '.'    
+    def __init__(self, parent, title="Grbl_Jogger") :   
+        self.parent = parent 
+        self.dirname = '.' 
+  
+    #	Read Configuration from file
+        self.cfg = wx.Config('grblJoggerConfig')
+        if self.cfg.Exists('port'):
+	  print "Reading Configuration"
+          self.port = self.cfg.Read('port')
+          self.baud = self.cfg.ReadInt('baud')
+        else:
+          self.port = '/dev/ttyACM0'
+          self.baud = 9600
+          print "Creating config"
+          self.cfg.Write("port", self.port)
+          self.cfg.WriteInt("baud", self.baud)
+
+
+	print "using port " + self.port
+	print "using baud " + str(self.baud)
 	
-        self.parent = parent    
-        
-        mainFrame = wx.Frame.__init__(self,self.parent, title=title, size=(2048,600))    
+	mainFrame = wx.Frame.__init__(self,self.parent, title=title, size=(2048,600))    
         
         filemenu= wx.Menu()
         setupmenu = wx.Menu()
-        helpmenu = wx.Menu()       
+        helpmenu = wx.Menu()
 
         menuBar = wx.MenuBar()
         menuBar.Append(filemenu,"&File")                    # Adding the "filemenu" to the MenuBar       
@@ -89,7 +107,9 @@ class MainWindow(wx.Frame):
         self.distanceBox = wx.TextCtrl(self.jogPanel)    
         
         self.speedLabel = wx.StaticText(self.jogPanel, 1, "IPM:")
-        self.speedBox = wx.TextCtrl(self.jogPanel)
+        self.speedBox = wx.TextCtrl(self.jogPanel)    
+        
+
         
         #	Buttons;  One per direction
         XPlusButton = wx.Button(self.jogPanel, -1, 'X+',size=(75,75))
@@ -104,15 +124,17 @@ class MainWindow(wx.Frame):
         self.codeViewer = wx.TextCtrl(self.jogPanel, -1, '', style=wx.TE_MULTILINE|wx.VSCROLL)
         startButton = wx.Button(self.jogPanel, -1, 'Start')
         stopButton = wx.Button(self.jogPanel, -1, 'Stop')
+        pauseButton = wx.Button(self.jogPanel, -1, 'Pause')
+        
         
 
         #  Sizers.  Everything is on rootSizer         
         self.topSizer.Add(self.distanceLabel, 1, wx.EXPAND)
-        self.topSizer.Add(self.distanceBox, 1, wx.EXPAND)
+        self.topSizer.Add(self.distanceBox, 1)
         self.topSizer.Add(self.speedLabel, 1, wx.EXPAND)
-        self.topSizer.Add(self.speedBox, 1, wx.EXPAND)        
+        self.topSizer.Add(self.speedBox, 1)        
         self.buttonSizer.Add(XPlusButton, 1, wx.EXPAND)
-        self.buttonSizer.Add(XMinusButton, 1, wx.EXPAND)
+        self.buttonSizer.Add(XMinusButton,1, wx.EXPAND)
         self.buttonSizer.Add(YPlusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(YMinusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(ZPlusButton, 1, wx.EXPAND)
@@ -123,24 +145,25 @@ class MainWindow(wx.Frame):
         self.editorSizer1.Add(self.codeViewer, 1, wx.EXPAND)      
         self.editorSizer2.Add(startButton, 1, wx.EXPAND)
         self.editorSizer2.Add(stopButton, 1, wx.EXPAND)
+        self.editorSizer2.Add(pauseButton, 1, wx.EXPAND)
         
         self.rootSizer.Add(self.topSizer, 1, wx.EXPAND)
         self.rootSizer.Add(self.buttonSizer, 1, wx.EXPAND)   
         self.rootSizer.Add(self.buttonSizer2, 1, wx.EXPAND) 
-        self.rootSizer.Add(self.editorSizer1, 1, wx.EXPAND)        
+        self.rootSizer.Add(self.editorSizer1, 3, wx.EXPAND)        
         self.rootSizer.Add(self.editorSizer2, 1, wx.EXPAND)
        
        # self.rootSizer.Add(self.editorSizer3, 1, wx.EXPAND)
 
 
 	#	Bind events to buttons
-        self.Bind(wx.EVT_CLOSE, self.OnExit)
+        self.Bind(wx.EVT_CLOSE, self.onExit)
         
 #       self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
-        self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
-        self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
+        self.Bind(wx.EVT_MENU, self.onExit, menuExit)
+        self.Bind(wx.EVT_MENU, self.onOpen, menuOpen)
 #       self.Bind(wx.EVT_MENU, self.setupPort, menuPorts)
-#       self.Bind(wx.EVT_MENU, self.OnSave, menuSave)
+        self.Bind(wx.EVT_MENU, self.onSave, menuSave)
         self.Bind(wx.EVT_BUTTON, self.XPlus, XPlusButton)
         self.Bind(wx.EVT_BUTTON, self.XMinus, XMinusButton)
         self.Bind(wx.EVT_BUTTON, self.YPlus, YPlusButton)
@@ -153,6 +176,7 @@ class MainWindow(wx.Frame):
         
         self.Bind(wx.EVT_BUTTON, self.onStart, startButton)
         self.Bind(wx.EVT_BUTTON, self.onStop, stopButton)
+        self.Bind(wx.EVT_BUTTON, self.onPause, pauseButton)
         
         
 
@@ -169,16 +193,21 @@ class MainWindow(wx.Frame):
 	self.Show(True)	
 	
 	try :
-	  self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+	  self.ser = serial.Serial(self.port, self.baud, timeout=1)
+	  time.sleep(2)			# Give Grbl time to come up and respond
 	  
 	except :
 	  self.showComError()
 	  
-	time.sleep(2)			# Give Grbl time to come up and respond
-	self.ser.flushInput()		# Dump all the initial Grbl stuff	
-	self.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
 	
-    def OnOpen(self,e):
+	try :
+	  self.ser.flushInput()		# Dump all the initial Grbl stuff	
+	  self.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
+	  
+	except :
+	  pass
+	
+    def onOpen(self,e):
         """ Open a file"""
         dlg = wx.FileDialog(self, "Choose a file", self.dirname, "", "*.*", wx.OPEN)
         if dlg.ShowModal() == wx.ID_OK:
@@ -191,6 +220,12 @@ class MainWindow(wx.Frame):
 	
     def onStart(self, e) :
       print "Start"
+      
+    def onSave(self, e) :
+      print "Save G-Code"
+      
+    def onPause(self, e) :
+      print "Pause"
     
     def onStop(self, e) :
       print "Stop"
@@ -205,7 +240,7 @@ class MainWindow(wx.Frame):
     def showComError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Could not open COM port!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
-        self.OnExit(self)	#	Dump out
+        #self.onExit(self)	#	Dump out
         
     def showComWriteError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Error writing to Com port!", 'Error!', wx.OK | wx.ICON_ERROR)  
@@ -219,7 +254,7 @@ class MainWindow(wx.Frame):
         dlg = wx.MessageDialog(self, "I need a number!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
  
-    def OnExit(self,e):         # stuff to do when the program is ending     
+    def onExit(self,e):         # stuff to do when the program is ending     
         global ser
         try :
 	  self.ser.close()  	# Needs to be in a try in case it wasn't opened
