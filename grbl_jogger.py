@@ -39,45 +39,63 @@ import wx
 import sys
 import os
 import time
+import  wx.lib.newevent
 
 version = "0.1"
 
 x = 0	# Location of X Axis
 y = 0	# Location of Y Axis
 z = 0	# Location of Z Axis
+
+port = ''
+baud = 0
+
+ser = serial.Serial()
   
+serialEVT, EVT_SERIAL = wx.lib.newevent.NewEvent()  
+
 class MainWindow(wx.Frame):
-    def __init__(self, parent, title="Grbl_Jogger") :   
+    def __init__(self, parent, title="Grbl_Jogger") :  
+	global baud
+	global port 
+	
         self.parent = parent 
         self.dirname = '.' 
   
     #	Read Configuration from file
         self.cfg = wx.Config('grblJoggerConfig')
-        if self.cfg.Exists('port'):
+        if self.cfg.Exists('port'):	  
 	  print "Reading Configuration"
-          self.port = self.cfg.Read('port')
-          self.baud = self.cfg.ReadInt('baud')
+          port = self.cfg.Read('port')
+          baud = self.cfg.ReadInt('baud')
+          
+          self.portIsConfigured = 1
         else:
-          self.port = '/dev/ttyACM0'
-          self.baud = 9600
+	#  f2 = serialConfig(self.parent)
+	  
+          port = '/dev/ttyACM0'
+          baud = 9600
           print "Creating config"
-          self.cfg.Write("port", self.port)
-          self.cfg.WriteInt("baud", self.baud)
+          self.cfg.Write("port", port)
+          self.cfg.WriteInt("baud", baud)
 
 
-	print "using port " + self.port
-	print "using baud " + str(self.baud)
+	print "using port " + port
+	print "using baud " + str(baud)
 	
-	mainFrame = wx.Frame.__init__(self,self.parent, title=title, size=(2048,600))    
+	mainFrame = wx.Frame.__init__(self,self.parent, title=title, size=(2048,600))   
         
         filemenu= wx.Menu()
         setupmenu = wx.Menu()
         helpmenu = wx.Menu()
 
         menuBar = wx.MenuBar()
-        menuBar.Append(filemenu,"&File")                    # Adding the "filemenu" to the MenuBar       
+        menuBar.Append(filemenu,"&File")                    # Adding the "filemenu" to the MenuBar   
+        menuBar.Append(setupmenu, "Setup")
         menuBar.Append(helpmenu, "Help")
         self.SetMenuBar(menuBar)                            # Adding the MenuBar to the Frame content.
+        
+        menuPorts = setupmenu.Append(wx.ID_NEW, "Select Port", "Configure serial port");
       
 	menuOpen = filemenu.Append(wx.ID_OPEN, "&Open"," Open a file to edit")
         
@@ -162,7 +180,7 @@ class MainWindow(wx.Frame):
 #       self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
         self.Bind(wx.EVT_MENU, self.onExit, menuExit)
         self.Bind(wx.EVT_MENU, self.onOpen, menuOpen)
-#       self.Bind(wx.EVT_MENU, self.setupPort, menuPorts)
+        self.Bind(wx.EVT_MENU, self.setupPort, menuPorts)
         self.Bind(wx.EVT_MENU, self.onSave, menuSave)
         self.Bind(wx.EVT_BUTTON, self.XPlus, XPlusButton)
         self.Bind(wx.EVT_BUTTON, self.XMinus, XMinusButton)
@@ -193,7 +211,7 @@ class MainWindow(wx.Frame):
 	self.Show(True)	
 	
 	try :
-	  self.ser = serial.Serial(self.port, self.baud, timeout=1)
+	  ser = serial.Serial(self.port, self.baud, timeout=1)
 	  time.sleep(2)			# Give Grbl time to come up and respond
 	  
 	except :
@@ -201,8 +219,8 @@ class MainWindow(wx.Frame):
 	  
 	
 	try :
-	  self.ser.flushInput()		# Dump all the initial Grbl stuff	
-	  self.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
+	  ser.flushInput()		# Dump all the initial Grbl stuff	
+	  ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
 	  
 	except :
 	  pass
@@ -217,6 +235,13 @@ class MainWindow(wx.Frame):
             self.codeViewer.SetValue(f.read())
             f.close()
         dlg.Destroy()
+        
+    def setupPort(self, e) :        
+      dia = configSerial(self, -1)
+      dia.ShowModal()
+      #self.showReady()
+      self.portIsConfigured = 1
+      dia.Destroy() 
 	
     def onStart(self, e) :
       print "Start"
@@ -331,6 +356,148 @@ class MainWindow(wx.Frame):
       if not grbl_response :
 	self.showComTimeoutError()
     
+
+class configSerial(wx.Dialog):
+    def __init__(self, parent, id, title = "Configure Serial Port"):
+        global ser
+      #  MainWindow(None).dummy(None)
+	self.parent= parent
+	self.id = id
+
+        if ser.isOpen() :  # Dump the port if already open
+	  print "Closing port that's already open"
+          ser.close()
+
+        self.comError = 0;
+        self.ports = []
+        self.ports = self.findPorts()
+        if len(self.ports) < 1 :
+            self.ports.append("No Ports Found")
+            
+        self.baudRates = ['110', '300', '600', '1200', '2400', '4800', '9600', '14400', '19200', '28800', '38400', '56000', '57600', '115200']
+        self.dataBitsList = ['5', '6', '7', '8']
+        self.parityList = ['Even', 'Odd', 'N']
+        self.stopBitsList = ['1','2']
+        self.flowControlList = ['XON', 'XOFF', 'Hardware', 'None']
+
+        # Init to defaults
+        self.port = self.ports[0]
+        self.baud = '9600'
+        self.dataBits = '8'
+        self.parity = 'N'
+        self.stopBit = '1'
+        self.flowControl = 'None'
+
+        #   Build the box
+        wx.Dialog.__init__(self, self.parent, self.id, title, size=(225,325)) # second is vertical
+
+        #   Vertical sizer with a bunch of horizontal sizers
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer2 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer3 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer4 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer5 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer6 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer7 = wx.BoxSizer(wx.HORIZONTAL)        
+      
+        sizer.Add(sizer2, 0, wx.EXPAND)
+        sizer.Add(sizer3, 0, wx.EXPAND)
+        sizer.Add(sizer4, 0, wx.EXPAND)
+        sizer.Add(sizer5, 0, wx.EXPAND)
+        sizer.Add(sizer6, 0, wx.EXPAND)
+        sizer.Add(sizer7, 0, wx.EXPAND)        
+
+        #   Drop downs and text
+        st1 = sizer2.Add(wx.StaticText(self, -1, 'Port', style=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL), 1, wx.EXPAND)
+        self.portsCombo = wx.ComboBox(self, -1, self.ports[0], size=(150, -1), choices=self.ports,style=wx.CB_READONLY)
+        portsBox = sizer2.Add(self.portsCombo, 0, wx.ALL| wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
+
+        st2 = sizer3.Add(wx.StaticText(self, -1, 'Baud', style=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL ), 1, wx.EXPAND)
+        self.baudCombo = wx.ComboBox(self, -1, self.baud, size=(150, -1), choices=self.baudRates,style=wx.CB_READONLY)
+        baudBox = sizer3.Add(self.baudCombo, 0, wx.ALL| wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
+
+        st3 = sizer4.Add(wx.StaticText(self, -1, 'Data Bits', style=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL), 1, wx.EXPAND)
+        self.bitsCombo = wx.ComboBox(self, -1, self.dataBits, size=(150, -1), choices=self.dataBitsList,style=wx.CB_READONLY)
+        bitsBox = sizer4.Add(self.bitsCombo, 0, wx.ALL| wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
+
+        st4 = sizer5.Add(wx.StaticText(self, -1, 'Parity', style=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL), 1, wx.EXPAND)
+        self.parityCombo = wx.ComboBox(self, -1, self.parity,  size=(150, -1), choices=self.parityList,style=wx.CB_READONLY)
+        parityBox = sizer5.Add(self.parityCombo, 0, wx.ALL| wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
+
+        st5 = sizer6.Add(wx.StaticText(self, -1, 'Stop Bits', style=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL), 1, wx.EXPAND)
+        self.stopCombo = wx.ComboBox(self, -1, self.stopBit, size=(150, -1), choices=self.stopBitsList,style=wx.CB_READONLY)
+        stopBox = sizer6.Add(self.stopCombo, 0, wx.ALL| wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
+
+        st6 = sizer7.Add(wx.StaticText(self, -1, 'Flow Control', style=wx.ALIGN_RIGHT| wx.ALIGN_CENTER_VERTICAL), 1, wx.EXPAND)
+        self.flowCombo = wx.ComboBox(self, -1, self.flowControl, size=(150, -1), choices=self.flowControlList,style=wx.CB_READONLY)
+        flowBox = sizer7.Add(self.flowCombo, 0, wx.ALL| wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)        
+        
+   
+        autoButton = wx.Button(self, -1, 'Auto-Config')
+        sizer.Add(autoButton, 0, wx.ALL|wx.ALIGN_CENTER, 5)
+
+        doneButton = wx.Button(self, -1, 'Done')
+        sizer.Add(doneButton, 0, wx.ALL|wx.ALIGN_CENTER, 5)  
+        
+        self.Bind(wx.EVT_BUTTON, self.done,doneButton)
+        self.Bind(wx.EVT_BUTTON, self.autoDetect,autoButton)
+
+        self.SetSizer(sizer)
+
+
+    def done(self, e) :
+        global ser
+        self.port = self.portsCombo.GetValue()
+        self.baud = int(self.baudCombo.GetValue())
+        self.dataBits = int(self.bitsCombo.GetValue())
+        self.parity = self.parityCombo.GetValue()
+        self.stopBit = int(self.stopCombo.GetValue())
+        self.flowControl = self.flowCombo.GetValue()
+
+        self.rtscts = 0
+        self.xonxoff = 0
+
+        if self.flowControl == "Hardware" :
+            self.rtscts = 1
+
+        if self.flowControl == "None" :
+            self.rtscts = 0                
+
+        if self.port != "No Ports Found" :
+            ser = serial.Serial(port= self.port, baudrate= self.baud, bytesize=self.dataBits, parity= self.parity,\
+            stopbits=self.stopBit, timeout = None, xonxoff= self.xonxoff, rtscts=self.rtscts)
+          #  if ser.isOpen() :
+          #      print "Yay from config"
+        self.Close(True)
+                
+        
+    def autoDetect(self, e) :
+        print "To be added"
+
+    def findPorts(self) :        
+        self.ports = []
+        for i in range(25) :  #  Windows
+            try :                
+                s = serial.Serial("COM" + str(i))                
+                s.close()
+                self.ports.append("COM" + str(i))                
+            except :
+                pass
+            
+        if len(self.ports) > 0 : 
+            return self.ports
+
+	for i in range(25) :
+	  for k in ["/dev/ttyUSB", "/dev/ttyACM", "/dev/ttyS"] : # Linux
+            try :		
+                s = serial.Serial(k+str(i))
+                s.close()                
+                self.ports.append(k+ str(i))
+
+            except :
+                pass
+                
+        return self.ports  
 
 app = wx.App(False)         # wx instance
 frame = MainWindow(None)    # main window frame
