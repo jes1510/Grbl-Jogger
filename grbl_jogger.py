@@ -45,65 +45,101 @@ z = 0	# Location of Z Axis
   
 class MainWindow(wx.Frame):
     def __init__(self, parent, title="Grbl_Jogger") :    
-        self.parent = parent       
-        mainFrame = wx.Frame.__init__(self,self.parent, title=title, size=(800,600))         
+    
+	self.dirname = '.'    
+	
+        self.parent = parent    
         
-        mainPanel = wx.Panel(self, -1, style=wx.SUNKEN_BORDER)
+        mainFrame = wx.Frame.__init__(self,self.parent, title=title, size=(2048,600))    
         
-        #   Build sizers and statusbar
-        self.topSizer = wx.BoxSizer(wx.HORIZONTAL) 
-        self.buttonSizer = wx.BoxSizer(wx.HORIZONTAL)         
-        self.rootSizer = wx.BoxSizer(wx.VERTICAL)                        
-        self.statusBar = self.CreateStatusBar()                              # statusbar in the bottom of the window                                  
-
-        # Setting up the menus
         filemenu= wx.Menu()
         setupmenu = wx.Menu()
         helpmenu = wx.Menu()       
 
-        menuSave = filemenu.Append(wx.ID_SAVE, "Save", "Save the current data")     
-        filemenu.AppendSeparator()
-        menuExit = filemenu.Append(wx.ID_EXIT,"E&xit"," Terminate the program")     
-        menuAbout = helpmenu.Append(wx.ID_ABOUT, "&About"," Information about this program")  
-
-        # Menubar
         menuBar = wx.MenuBar()
         menuBar.Append(filemenu,"&File")                    # Adding the "filemenu" to the MenuBar       
         menuBar.Append(helpmenu, "Help")
         self.SetMenuBar(menuBar)                            # Adding the MenuBar to the Frame content.
- 
-	#	Buttons;  One per direction
-        XPlusButton = wx.Button(mainPanel, -1, 'X+',size=(75,75))
-        XMinusButton = wx.Button(mainPanel, -1, 'X-',size=(75,75))
-        YPlusButton = wx.Button(mainPanel, -1, 'Y+',size=(75,75))
-        YMinusButton = wx.Button(mainPanel, -1, 'Y-',size=(75,75))
-        ZPlusButton = wx.Button(mainPanel, -1, 'Z+',size=(75,75))
-        ZMinusButton = wx.Button(mainPanel, -1, 'Z-',size=(75,75))
+      
+	menuOpen = filemenu.Append(wx.ID_OPEN, "&Open"," Open a file to edit")
+        
+        menuSave = filemenu.Append(wx.ID_SAVE, "Save", "Save the current data")     
+        filemenu.AppendSeparator()
+        menuExit = filemenu.Append(wx.ID_EXIT,"E&xit"," Terminate the program")     
+        menuAbout = helpmenu.Append(wx.ID_ABOUT, "&About"," Information about this program")  
+        
+        self.jogPanel = wx.Panel(self, -1, style=wx.SUNKEN_BORDER)       
+        #self.editorPanel1 = wx.Panel(self, -1, style = wx.SUNKEN_BORDER)
+        #self.editorPanel2 = wx.Panel(self, -1, style = wx.SUNKEN_BORDER)
+        #self.editorPanel3 = wx.Panel(self, -1, style = wx.SUNKEN_BORDER)
+        
+        #   Build sizers and statusbar
+        self.topSizer = wx.BoxSizer(wx.HORIZONTAL) 
+        self.buttonSizer = wx.BoxSizer(wx.HORIZONTAL) 
+        self.buttonSizer2 = wx.BoxSizer(wx.VERTICAL)
+        self.editorSizer1 = wx.BoxSizer(wx.VERTICAL) 
+        self.editorSizer2 = wx.BoxSizer(wx.VERTICAL)      
+        #self.editorSizer3 = wx.BoxSizer(wx.HORIZONTAL)
+        
+        self.rootSizer = wx.BoxSizer(wx.VERTICAL)                        
+        self.statusBar = self.CreateStatusBar()                              # statusbar in the bottom of the window    
         
         #	Input boxes for distance and speed
-        self.distanceLabel = wx.StaticText(mainPanel, 1, "Distance:")
-        self.distanceBox = wx.TextCtrl(self)
-        self.speedLabel = wx.StaticText(mainPanel, 1, "IPM:")
-        self.speedBox = wx.TextCtrl(self)
+        self.distanceLabel = wx.StaticText(self.jogPanel, 1, "Distance:")
+        self.distanceBox = wx.TextCtrl(self.jogPanel)    
+        
+        self.speedLabel = wx.StaticText(self.jogPanel, 1, "IPM:")
+        self.speedBox = wx.TextCtrl(self.jogPanel)
+        
+        #	Buttons;  One per direction
+        XPlusButton = wx.Button(self.jogPanel, -1, 'X+',size=(75,75))
+        XMinusButton = wx.Button(self.jogPanel, -1, 'X-',size=(75,75))
+        YPlusButton = wx.Button(self.jogPanel, -1, 'Y+',size=(75,75))
+        YMinusButton = wx.Button(self.jogPanel, -1, 'Y-',size=(75,75))
+        ZPlusButton = wx.Button(self.jogPanel, -1, 'Z+',size=(75,75))
+        ZMinusButton = wx.Button(self.jogPanel, -1, 'Z-',size=(75,75))        
+        setHomeButton = wx.Button(self.jogPanel, -1, 'Set Home')     
+        resetButton = wx.Button(self.jogPanel, -1, 'Reset Controller') 
+        
+        self.codeViewer = wx.TextCtrl(self.jogPanel, -1, '', style=wx.TE_MULTILINE|wx.VSCROLL)
+        startButton = wx.Button(self.jogPanel, -1, 'Start')
+        stopButton = wx.Button(self.jogPanel, -1, 'Stop')
+        
 
         #  Sizers.  Everything is on rootSizer         
         self.topSizer.Add(self.distanceLabel, 1, wx.EXPAND)
-        self.topSizer.Add(self.distanceBox, 2, wx.EXPAND)
+        self.topSizer.Add(self.distanceBox, 1, wx.EXPAND)
         self.topSizer.Add(self.speedLabel, 1, wx.EXPAND)
-        self.topSizer.Add(self.speedBox, 2, wx.EXPAND)        
+        self.topSizer.Add(self.speedBox, 1, wx.EXPAND)        
         self.buttonSizer.Add(XPlusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(XMinusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(YPlusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(YMinusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(ZPlusButton, 1, wx.EXPAND)
-        self.buttonSizer.Add(ZMinusButton, 1, wx.EXPAND)                 
+        self.buttonSizer.Add(ZMinusButton, 1, wx.EXPAND)         
+        self.buttonSizer2.Add(setHomeButton, 1, wx.EXPAND)
+        self.buttonSizer2.Add(resetButton, 1, wx.EXPAND)
+        
+        self.editorSizer1.Add(self.codeViewer, 1, wx.EXPAND)      
+        self.editorSizer2.Add(startButton, 1, wx.EXPAND)
+        self.editorSizer2.Add(stopButton, 1, wx.EXPAND)
+        
         self.rootSizer.Add(self.topSizer, 1, wx.EXPAND)
-        self.rootSizer.Add(self.buttonSizer, 4, wx.EXPAND)       
+        self.rootSizer.Add(self.buttonSizer, 1, wx.EXPAND)   
+        self.rootSizer.Add(self.buttonSizer2, 1, wx.EXPAND) 
+        self.rootSizer.Add(self.editorSizer1, 1, wx.EXPAND)
+        
+        self.rootSizer.Add(self.editorSizer2, 1, wx.EXPAND)
+       
+       # self.rootSizer.Add(self.editorSizer3, 1, wx.EXPAND)
+
 
 	#	Bind events to buttons
         self.Bind(wx.EVT_CLOSE, self.OnExit)
+        
 #       self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
         self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
+        self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
 #       self.Bind(wx.EVT_MENU, self.setupPort, menuPorts)
 #       self.Bind(wx.EVT_MENU, self.OnSave, menuSave)
         self.Bind(wx.EVT_BUTTON, self.XPlus, XPlusButton)
@@ -112,6 +148,10 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.YMinus, YMinusButton)
         self.Bind(wx.EVT_BUTTON, self.ZPLus, ZPlusButton)
         self.Bind(wx.EVT_BUTTON, self.ZMinus, ZMinusButton)
+       #self.Bind(wx.EVT_BUTTON, self.onStart, startButton)
+       # self.Bind(wx.EVT_BUTTON, self.onStop, stopButton)
+        
+        
 
         # set the sizers
         self.SetSizer(self.rootSizer)
@@ -123,21 +163,36 @@ class MainWindow(wx.Frame):
         self.speedBox.SetValue('12')
         
         self.Layout()
-	self.Show(True)
-	
+	self.Show(True)	
 	
 	try :
-	  self.ser = serial.Serial('/dev/ttyACM1', 9600, timeout=1)
+	  self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
 	  
 	except :
 	  self.showComError()
 	  
-	time.sleep(3)
-	self.ser.flushInput()	
-	self.ser.write("G20\n")
+	time.sleep(2)			# Give Grbl time to come up and respond
+	self.ser.flushInput()		# Dump all the initial Grbl stuff	
+	self.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
 	
+    def OnOpen(self,e):
+        """ Open a file"""
+        dlg = wx.FileDialog(self, "Choose a file", self.dirname, "", "*.*", wx.OPEN)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.filename = dlg.GetFilename()
+            self.dirname = dlg.GetDirectory()
+            f = open(os.path.join(self.dirname, self.filename), 'r')
+            self.codeViewer.SetValue(f.read())
+            f.close()
+        dlg.Destroy()
 	
-	
+    def onStart(self, e) :
+      pass
+    
+    def onStop(self, e) :
+      pass
+    
+    
     def showComError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Could not open COM port!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
@@ -162,7 +217,7 @@ class MainWindow(wx.Frame):
 	except :
 	  pass
 	
-        self.Destroy()              # wipe out windows and dump to the OS
+        self.Destroy()              # wipe out window and dump to the OS
         
     def readDistance(self) :
       try :
@@ -170,8 +225,7 @@ class MainWindow(wx.Frame):
       	return d
       	
       except :	
-	self.showValueError()
-      
+	self.showValueError()      
 
     def XPlus (self, e) :  	#	Increment X
       global x
@@ -209,8 +263,7 @@ class MainWindow(wx.Frame):
 	speedCommand = "f" + speed + "\n"  
 	
       except  :
-	self.showValueError()
-	
+	self.showValueError()	
        
       if axis == 'x' :
 	value = x
@@ -228,9 +281,7 @@ class MainWindow(wx.Frame):
       except :
 	self.showComWriteError()
       
-      grbl_response = self.ser.readline() 	# Wait for grbl response with carriage return      
-      #print 
-      
+      grbl_response = self.ser.readline() 	# Wait for grbl response with carriage return       
       self.statusBar.SetStatusText("Sent: " + dirCommand.strip() + ": " + "\tReceived: " +grbl_response)
       
       if not grbl_response :
