@@ -17,6 +17,10 @@ Grbl-Jogger - A simple interface to send jogging commands to a CNC controller ru
 
 The units of measurement is imperial although it will probably be selectable in future versions.  The default feedrate is 12IPM but is easily changed in the script.
 
+FEbruary 19, 2012
+------------------
+Added initial stuff for streaming the gCode to thecontroller board.
+
 February 7, 2012
 ------------------
 Initial Release.  Very rough around the edges.  The GUI needs a bit of cleaning.  Overall it is functional though.  
