@@ -48,14 +48,14 @@ y = 0	# Location of Y Axis
 z = 0	# Location of Z Axis
 
 
-ser = serial.Serial() 
-configFile = wx.Config('grblJoggerConfig')
+
+
   
 serialEVT, EVT_SERIAL = wx.lib.newevent.NewEvent()  
 
 class MainWindow(wx.Frame):
     def __init__(self, parent, title="Grbl_Jogger") : 	
-	global ser
+	#global ser
 	global configFile
         self.parent = parent 
         self.dirname = '.' 
@@ -154,12 +154,12 @@ class MainWindow(wx.Frame):
         self.rootSizer.Add(self.editorSizer2, 1, wx.EXPAND)
        
 	
-        if configFile.Exists('port'):
+        if port.configFile.Exists('port'):
 	  print "Reading Configuration"
-	  port.name = configFile.Read('port')
-	  port.baud = configFile.ReadInt('baud') 
-	  port.timeout = configFile.ReadInt('timeout')
-	  port.allowKeyboard = configFile.Read('allowKeyboard')
+	  port.name = port.configFile.Read('port')
+	  port.baud = port.configFile.ReadInt('baud') 
+	  port.timeout = port.configFile.ReadInt('timeout')
+	  port.allowKeyboard = port.configFile.Read('allowKeyboard')
         
         else:
 	  print "No config"
@@ -203,11 +203,11 @@ class MainWindow(wx.Frame):
 	
 	try :
 	  #ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-	  ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
+	  port.ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
 	  #self.ser = serial.Serial(port.name, port.baud, timeout = port.timeout)
 	  time.sleep(2)			# Give Grbl time to come up and respond
-	  ser.flushInput()		# Dump all the initial Grbl stuff	
-	  ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
+	  port.ser.flushInput()		# Dump all the initial Grbl stuff	
+	  port.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
 	  
 	except :
 	  self.showComError() #vents to buttons
@@ -280,7 +280,7 @@ class MainWindow(wx.Frame):
       global x
       global y
       global z
-      global ser
+      #global ser
       
       ret  = wx.MessageBox('Are you sure you want to set HOME?', 'Question', 
 	wx.YES_NO | wx.NO_DEFAULT, self)
@@ -293,22 +293,22 @@ class MainWindow(wx.Frame):
 
       
     def resetController(self, e) :
-      global ser
+      #global ser
       ret  = wx.MessageBox('Are you sure you want to RESET the controller?', 'Question', 
 	wx.YES_NO | wx.NO_DEFAULT, self)
       if ret == wx.YES:
-	ser.close()
-	ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
+	port.ser.close()
+	port.ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
 	port.flushSerial()
 	print "reset Controller"
     
     def saveOptions(self) :
 	global configFile
-	configFile.Write("port", port.name)
-        configFile.WriteInt("baud", port.baud)
-        configFile.WriteInt("timeout", port.timeout)
-        configFile.WriteInt("allowKeyboard", port.allowKeyboard)          
-	configFile.Flush()
+	port.configFile.Write("port", port.name)
+        port.configFile.WriteInt("baud", port.baud)
+        port.configFile.WriteInt("timeout", port.timeout)
+        port.configFile.WriteInt("allowKeyboard", port.allowKeyboard)          
+	port.configFile.Flush()
 	
        
         print "Saved Options"
@@ -333,9 +333,9 @@ class MainWindow(wx.Frame):
         dlg.ShowModal()
  
     def onExit(self,e):         # stuff to do when the program is ending     
-        global ser
+        #global ser
         try :
-	  ser.close()  	# Needs to be in a try in case it wasn't opened
+	  port.ser.close()  	# Needs to be in a try in case it wasn't opened
 	except :
 	  pass
 	
@@ -380,16 +380,16 @@ class MainWindow(wx.Frame):
       self.move('z')
       
     def sendCommand(self, command, option) :   
-      global ser  
+      #global ser  
       
       command = str(command) + " " + str(option + "\n")
       
       try :
-	ser.write(command)
+	port.ser.write(command)
       except :
 	self.showComWriteError()
       
-      grbl_response = ser.readline() 	# Wait for grbl response with carriage return       
+      grbl_response = port.ser.readline() 	# Wait for grbl response with carriage return       
       self.statusBar.SetStatusText("Sent: " + command.strip() + ": " + "\tReceived: " +grbl_response)
       
       print grbl_response
@@ -397,7 +397,7 @@ class MainWindow(wx.Frame):
 	self.showComTimeoutError()
     
     def move(self, axis) :   
-      global ser
+      #global ser
       
       try :
 	speed = str(int(self.speedBox.GetValue()))
@@ -418,11 +418,11 @@ class MainWindow(wx.Frame):
       dirCommand = "G0 " + "f" + speed + " " + axis + str(value) + "\n"
       
       try :
-	ser.write(dirCommand)
+	port.ser.write(dirCommand)
       except :
 	self.showComWriteError()
       
-      grbl_response = ser.readline() 	# Wait for grbl response with carriage return       
+      grbl_response = port.ser.readline() 	# Wait for grbl response with carriage return       
       self.statusBar.SetStatusText("Sent: " + dirCommand.strip() + ": " + "\tReceived: " +grbl_response)
       
       print grbl_response
@@ -432,14 +432,14 @@ class MainWindow(wx.Frame):
 
 class configSerial(wx.Dialog):
     def __init__(self, parent, id, title = "Configure Serial Port"):
-        global ser
+        #global ser
 
 	self.parent= parent
 	self.id = id
 
-        if ser.isOpen() :  # Dump the port if already open
+        if port.ser.isOpen() :  # Dump the port if already open
 	  print "Closing port that's already open"
-          ser.close()
+          port.ser.close()
 
         self.comError = 0;
         self.ports = []
@@ -481,7 +481,6 @@ class configSerial(wx.Dialog):
         sizer.Add(sizer6, 0, wx.EXPAND)
         sizer.Add(sizer7, 0, wx.EXPAND)   
         sizer.Add(sizer8, 0, wx.EXPAND) 
-        
 
         #   Drop downs and text
         st1 = sizer2.Add(wx.StaticText(self, -1, 'Port', style=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL), 1, wx.EXPAND)
@@ -506,15 +505,10 @@ class configSerial(wx.Dialog):
 
         st6 = sizer7.Add(wx.StaticText(self, -1, 'Flow Control', style=wx.ALIGN_RIGHT| wx.ALIGN_CENTER_VERTICAL), 1, wx.EXPAND)
         self.flowCombo = wx.ComboBox(self, -1, self.flowControl, size=(150, -1), choices=self.flowControlList,style=wx.CB_READONLY)
-        flowBox = sizer7.Add(self.flowCombo, 0, wx.ALL| wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)        
-        
+        flowBox = sizer7.Add(self.flowCombo, 0, wx.ALL| wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)          
       
         self.keyJog = wx.CheckBox(self, -1, 'Enable Keyboard Shortcuts' )    
-	allowManBox = sizer8.Add(self.keyJog, 0, wx.ALL| wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)  
-	
-	
-	#print port.allowKeyboard
-	
+	allowManBox = sizer8.Add(self.keyJog, 0, wx.ALL| wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)  	
 	
 	if port.allowKeyboard :
 	  self.keyJog.SetValue(True)
@@ -526,16 +520,19 @@ class configSerial(wx.Dialog):
         #sizer.Add(autoButton, 0, wx.ALL|wx.ALIGN_CENTER, 5)
 
         doneButton = wx.Button(self, -1, 'Done')
+        cancelButton = wx.Button(self, -1, 'Cancel')
         sizer.Add(doneButton, 0, wx.ALL|wx.ALIGN_CENTER, 5)  
-        
+        sizer.Add(cancelButton, 0, wx.ALL|wx.ALIGN_CENTER, 5)  
         self.Bind(wx.EVT_BUTTON, self.done,doneButton)
-        #self.Bind(wx.EVT_BUTTON, self.autoDetect,autoButton)
+        self.Bind(wx.EVT_BUTTON, self.cancel,cancelButton)  
 
         self.SetSizer(sizer)
-
+        
+    def cancel(self, e) :
+      self.Close(True)
 
     def done(self, e) :
-        global ser	
+        #global ser	
         port.name = self.portsCombo.GetValue()
         port.baud = int(self.baudCombo.GetValue())
         port.dataBits = int(self.bitsCombo.GetValue())
@@ -556,7 +553,7 @@ class configSerial(wx.Dialog):
         if self.ports != "No Ports Found" :
            #ser = serial.Serial(port= port.name, baudrate= port.baud, bytesize=port.dataBits, parity= port.parity,\
            # stopbits=port.stopBit, timeout = None, xonxoff= port.xonxoff, rtscts=port.rtscts)
-           ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
+           port.ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
            #ser = serial.Serial('/dev/ttyACM0', 9600, timeout=2)	      
 
           
@@ -569,8 +566,7 @@ class configSerial(wx.Dialog):
     def autoDetect(self, e) :
         print "To be added"
 
-    def findPorts(self) :    
-	global ser
+    def findPorts(self) :  	
         self.ports = []
         for i in range(25) :  #  Windows
             try :                
@@ -605,12 +601,14 @@ class Port() :		# Dummy class to encapsulate the serial port attributes;  Cleane
     self.timeout = 1
     self.rtscts = 0
     self.allowKeyboard = True    
+    self.configFile = wx.Config('grblJoggerConfig')
+    self.ser =  serial.Serial() 
   
   def flushSerial(self) :
-    global ser
+    #global ser
     
     try :
-      ser.flushInput()
+      port.ser.flushInput()
       time.sleep(2)
       ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
 	 
