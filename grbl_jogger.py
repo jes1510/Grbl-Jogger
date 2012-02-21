@@ -197,7 +197,8 @@ class MainWindow(wx.Frame):
         if self.cfg.Exists('port'):
 	  print "Reading Configuration"
 	  port.name = self.cfg.Read('port')
-	  port.baud = self.cfg.ReadInt('baud')         
+	  port.baud = self.cfg.ReadInt('baud') 
+	  port.timeout = self.cfg.ReadInt('timeout')
         
         else:
 	  print "No config"
@@ -498,6 +499,9 @@ class configSerial(wx.Dialog):
 
            if ser.isOpen() :
 	      print "Yay from config"
+	      
+	self.cfg.Write("port", port.name)
+        self.cfg.WriteInt("baud", port.baud)
           
         print "Name: " + port.name
         port.reset()
