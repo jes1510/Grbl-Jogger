@@ -63,24 +63,36 @@ class MainWindow(wx.Frame):
   
     #	Read Configuration from file
         self.cfg = wx.Config('grblJoggerConfig')
-        if self.cfg.Exists('port'):	  
-	  print "Reading Configuration"
-          port = self.cfg.Read('port')
-          baud = self.cfg.ReadInt('baud')
+        #if self.cfg.Exists('port'):	  
+	#  print "Reading Configuration"
+        #  port = self.cfg.Read('port')
+        #  baud = self.cfg.ReadInt('baud')
           
-          self.portIsConfigured = 1
-        else:
+         # self.portIsConfigured = 1
+        #else:
 	#  f2 = serialConfig(self.parent)
 	  
-          port = '/dev/ttyACM0'
-          baud = 9600
-          print "Creating config"
-          self.cfg.Write("port", port)
-          self.cfg.WriteInt("baud", baud)
+         # port = '/dev/ttyACM0'
+         # baud = 9600
+         # print "Creating config"
+         # self.cfg.Write("port", port)
+         # self.cfg.WriteInt("baud", baud)
+         
+	try :
+	  self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+	  
+	except :
+	  self.showComError()
+	  
+	time.sleep(2)			# Give Grbl time to come up and respond
+	self.ser.flushInput()		# Dump all the initial Grbl stuff	
+	self.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
+	  
+	
 
 
-	print "using port " + port
-	print "using baud " + str(baud)
+	#print "using port " + port
+	#print "using baud " + str(baud)
 	
 	mainFrame = wx.Frame.__init__(self,self.parent, title=title, size=(2048,600))   
         
@@ -185,7 +197,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.XMinus, XMinusButton)
         self.Bind(wx.EVT_BUTTON, self.YPlus, YPlusButton)
         self.Bind(wx.EVT_BUTTON, self.YMinus, YMinusButton)
-        self.Bind(wx.EVT_BUTTON, self.ZPLus, ZPlusButton)
+        self.Bind(wx.EVT_BUTTON, self.ZPlus, ZPlusButton)
         self.Bind(wx.EVT_BUTTON, self.ZMinus, ZMinusButton)
         
         self.Bind(wx.EVT_BUTTON, self.setHome, setHomeButton)
@@ -194,7 +206,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.onStart, startButton)
         self.Bind(wx.EVT_BUTTON, self.onStop, stopButton)
         self.Bind(wx.EVT_BUTTON, self.onPause, pauseButton)
-        
+        self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyDown)    
         
 
         # set the sizers
@@ -209,20 +221,39 @@ class MainWindow(wx.Frame):
         self.Layout()
 	self.Show(True)	
 	
-	try :
-	  ser = serial.Serial(self.port, self.baud, timeout=1)
-	  time.sleep(2)			# Give Grbl time to come up and respond
-	  
-	except :
-	  self.showComError()
-	  
+
 	
-	try :
-	  ser.flushInput()		# Dump all the initial Grbl stuff	
-	  ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
+    def OnKeyDown(self, event):
+      global x
+      global y
+      global z
+      keycode = event.GetKeyCode()
+      print keycode
+      if keycode == wx.WXK_ESCAPE:
+        ret  = wx.MessageBox('Are you sure to quit?', 'Question', 
+	wx.YES_NO | wx.NO_DEFAULT, self)
+        if ret == wx.YES:
+	  self.Close()
 	  
-	except :
-	  pass
+      if keycode == 315 :	#	Up Arrow
+	self.YPlus(None)
+	
+      if keycode == 317 :	#	Down Arrow
+	self.YMinus(None)
+	
+      if keycode == 314 :	#	Left Arrow
+	self.XMinus(None)
+	
+      if keycode == 316 :	#	Right Arrow
+	self.XPlus(None)
+	
+      if keycode == 366 :	#	Page UP
+	self.ZPlus(None)
+	
+      if keycode == 367 :	#	Page Down
+	self.ZMinus(None)
+      
+      event.Skip()
 	
     def onOpen(self,e):
         """ Open a file"""
@@ -315,7 +346,7 @@ class MainWindow(wx.Frame):
       y = y - self.readDistance()
       self.sendCommand('y')
     
-    def ZPLus(self, e) :	#	Increment Z
+    def ZPlus(self, e) :	#	Increment Z
       global z
       z = z + self.readDistance()
       self.sendCommand('z')
@@ -447,7 +478,7 @@ class configSerial(wx.Dialog):
     def done(self, e) :
         global ser
 	
-	print "Name: " + port.name
+	
         port.name = self.portsCombo.GetValue()
         port.baud = int(self.baudCombo.GetValue())
         port.dataBits = int(self.bitsCombo.GetValue())
@@ -469,6 +500,8 @@ class configSerial(wx.Dialog):
             stopbits=port.stopBit, timeout = None, xonxoff= port.xonxoff, rtscts=port.rtscts)
           #  if ser.isOpen() :
           #      print "Yay from config"
+          
+        print "Name: " + port.name
         self.Close(True)
                 
         
