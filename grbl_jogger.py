@@ -282,6 +282,8 @@ class MainWindow(wx.Frame):
       
     def setHome(self, e) :
       print "set home"
+      ser.write("G92 X0 Y0 Z0")
+      print ser.readline()
       
     def resetController(self, e) :
       print "reset Controller"
@@ -291,6 +293,9 @@ class MainWindow(wx.Frame):
         dlg = wx.MessageDialog(self, "Could not open COM port!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
         self.setupPort(None)
+	self.cfg.Write("port", port.name)
+        self.cfg.WriteInt("baud", port.baud)
+        self.cfg.WriteInt("timeout", port.timeout)
         
     def showComWriteError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Error writing to Com port!", 'Error!', wx.OK | wx.ICON_ERROR)  
@@ -494,14 +499,9 @@ class configSerial(wx.Dialog):
         if self.ports != "No Ports Found" :
            #ser = serial.Serial(port= port.name, baudrate= port.baud, bytesize=port.dataBits, parity= port.parity,\
            # stopbits=port.stopBit, timeout = None, xonxoff= port.xonxoff, rtscts=port.rtscts)
-           #ser = serial.Serial(port.name, baudrate=port.baud, timeout=port.timeout)
-           ser = serial.Serial('/dev/ttyACM0', 9600, timeout=2)
+           ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
+           #ser = serial.Serial('/dev/ttyACM0', 9600, timeout=2)	      
 
-           if ser.isOpen() :
-	      print "Yay from config"
-	      
-	self.cfg.Write("port", port.name)
-        self.cfg.WriteInt("baud", port.baud)
           
         print "Name: " + port.name
         port.reset()
@@ -553,6 +553,7 @@ class Port() :		# Dummy class to encapsulate the serial port attributes;  Cleane
     global ser
     ser.flushInput()
     time.sleep(2)
+    ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
     
 port = Port()
 
