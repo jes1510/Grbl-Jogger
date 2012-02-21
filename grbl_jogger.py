@@ -48,15 +48,15 @@ y = 0	# Location of Y Axis
 z = 0	# Location of Z Axis
 
 
-ser = serial.Serial()
-
+ser = serial.Serial() 
+configFile = wx.Config('grblJoggerConfig')
   
 serialEVT, EVT_SERIAL = wx.lib.newevent.NewEvent()  
 
 class MainWindow(wx.Frame):
     def __init__(self, parent, title="Grbl_Jogger") : 	
 	global ser
-	
+	global configFile
         self.parent = parent 
         self.dirname = '.' 
         
@@ -153,12 +153,22 @@ class MainWindow(wx.Frame):
         self.rootSizer.Add(self.editorSizer1, 3, wx.EXPAND)        
         self.rootSizer.Add(self.editorSizer2, 1, wx.EXPAND)
        
-       # self.rootSizer.Add(self.editorSizer3, 1, wx.EXPAND)
-
-
-	#	Bind events to buttons
-        self.Bind(wx.EVT_CLOSE, self.onExit)
+	
+        if configFile.Exists('port'):
+	  print "Reading Configuration"
+	  port.name = configFile.Read('port')
+	  port.baud = configFile.ReadInt('baud') 
+	  port.timeout = configFile.ReadInt('timeout')
+	  port.allowKeyboard = configFile.Read('allowKeyboard')
         
+        else:
+	  print "No config"
+         # self.cfg.Write("port", port)
+         # self.cfg.WriteInt("baud", baud)
+	
+
+	  
+        self.Bind(wx.EVT_CLOSE, self.onExit)        
 #       self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
         self.Bind(wx.EVT_MENU, self.onExit, menuExit)
         self.Bind(wx.EVT_MENU, self.onOpen, menuOpen)
@@ -177,8 +187,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.onStart, startButton)
         self.Bind(wx.EVT_BUTTON, self.onStop, stopButton)
         self.Bind(wx.EVT_BUTTON, self.onPause, pauseButton)
-        self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyDown)    
-        
+        self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyDown)            
 
         # set the sizers
         self.SetSizer(self.rootSizer)
@@ -190,20 +199,7 @@ class MainWindow(wx.Frame):
         self.speedBox.SetValue('12')
         
         self.Layout()
-	self.Show(True)	
-	
-	#Read Configuration from file
-        self.cfg = wx.Config('grblJoggerConfig')
-        if self.cfg.Exists('port'):
-	  print "Reading Configuration"
-	  port.name = self.cfg.Read('port')
-	  port.baud = self.cfg.ReadInt('baud') 
-	  port.timeout = self.cfg.ReadInt('timeout')
-        
-        else:
-	  print "No config"
-         # self.cfg.Write("port", port)
-         # self.cfg.WriteInt("baud", baud)
+	self.Show(True)		
 	
 	try :
 	  #ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
@@ -214,42 +210,42 @@ class MainWindow(wx.Frame):
 	  ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
 	  
 	except :
-	  self.showComError()  
-	  
-	
+	  self.showComError() #vents to buttons
 
 	
     def OnKeyDown(self, event):
       global x
       global y
       global z
-      keycode = event.GetKeyCode()
-      #print keycode
-      if keycode == wx.WXK_ESCAPE:
-        ret  = wx.MessageBox('Are you sure to quit?', 'Question', 
-	wx.YES_NO | wx.NO_DEFAULT, self)
-        if ret == wx.YES:
-	  self.Close()
-	  
-      if keycode == 315 :	#	Up Arrow
-	self.YPlus(None)
-	
-      if keycode == 317 :	#	Down Arrow
-	self.YMinus(None)
-	
-      if keycode == 314 :	#	Left Arrow
-	self.XMinus(None)
-	
-      if keycode == 316 :	#	Right Arrow
-	self.XPlus(None)
-	
-      if keycode == 366 :	#	Page UP
-	self.ZPlus(None)
-	
-      if keycode == 367 :	#	Page Down
-	self.ZMinus(None)
       
-      event.Skip()
+      if port.allowKeyboard :	
+	keycode = event.GetKeyCode()
+      #print keycode
+	if keycode == wx.WXK_ESCAPE :
+	  ret  = wx.MessageBox('Are you sure to quit?', 'Question', 
+	  wx.YES_NO | wx.NO_DEFAULT, self)
+	  if ret == wx.YES:
+	    self.Close()
+	  
+	if keycode == 315 :	#	Up Arrow
+	  self.YPlus(None)
+	
+	if keycode == 317 :	#	Down Arrow
+	  self.YMinus(None)
+	
+	if keycode == 314 :	#	Left Arrow
+	  self.XMinus(None)
+	
+	if keycode == 316 :	#	Right Arrow
+	  self.XPlus(None)
+	
+	if keycode == 366 :	#	Page UP
+	  self.ZPlus(None)
+	
+	if keycode == 367 :	#	Page Down
+	  self.ZMinus(None)
+      
+	event.Skip()
 	
     def onOpen(self,e):
         """ Open a file"""
@@ -265,7 +261,7 @@ class MainWindow(wx.Frame):
     def setupPort(self, e) :        
       dia = configSerial(self, -1)
       dia.ShowModal()
-      self.portIsConfigured = 1
+      self.saveOptions()    
       dia.Destroy() 
 	
     def onStart(self, e) :
@@ -294,8 +290,7 @@ class MainWindow(wx.Frame):
 	x=0
 	y=0
 	z=0
-	#print "Reset"
-      #print ser.readline()
+
       
     def resetController(self, e) :
       global ser
@@ -304,17 +299,26 @@ class MainWindow(wx.Frame):
       if ret == wx.YES:
 	ser.close()
 	ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
-	port.reset()
+	port.flushSerial()
 	print "reset Controller"
     
+    def saveOptions(self) :
+	global configFile
+	configFile.Write("port", port.name)
+        configFile.WriteInt("baud", port.baud)
+        configFile.WriteInt("timeout", port.timeout)
+        configFile.WriteInt("allowKeyboard", port.allowKeyboard)          
+	configFile.Flush()
+	
+       
+        print "Saved Options"
     
     def showComError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Could not open COM port!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
         self.setupPort(None)
-	self.cfg.Write("port", port.name)
-        self.cfg.WriteInt("baud", port.baud)
-        self.cfg.WriteInt("timeout", port.timeout)
+        #self.saveOptions()
+	
         
     def showComWriteError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Error writing to Com port!", 'Error!', wx.OK | wx.ICON_ERROR)  
@@ -467,14 +471,17 @@ class configSerial(wx.Dialog):
         sizer4 = wx.BoxSizer(wx.HORIZONTAL)
         sizer5 = wx.BoxSizer(wx.HORIZONTAL)
         sizer6 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer7 = wx.BoxSizer(wx.HORIZONTAL)        
+        sizer7 = wx.BoxSizer(wx.HORIZONTAL)    
+        sizer8 = wx.BoxSizer(wx.HORIZONTAL) 
       
         sizer.Add(sizer2, 0, wx.EXPAND)
         sizer.Add(sizer3, 0, wx.EXPAND)
         sizer.Add(sizer4, 0, wx.EXPAND)
         sizer.Add(sizer5, 0, wx.EXPAND)
         sizer.Add(sizer6, 0, wx.EXPAND)
-        sizer.Add(sizer7, 0, wx.EXPAND)        
+        sizer.Add(sizer7, 0, wx.EXPAND)   
+        sizer.Add(sizer8, 0, wx.EXPAND) 
+        
 
         #   Drop downs and text
         st1 = sizer2.Add(wx.StaticText(self, -1, 'Port', style=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL), 1, wx.EXPAND)
@@ -501,15 +508,28 @@ class configSerial(wx.Dialog):
         self.flowCombo = wx.ComboBox(self, -1, self.flowControl, size=(150, -1), choices=self.flowControlList,style=wx.CB_READONLY)
         flowBox = sizer7.Add(self.flowCombo, 0, wx.ALL| wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)        
         
+      
+        self.keyJog = wx.CheckBox(self, -1, 'Enable Keyboard Shortcuts' )    
+	allowManBox = sizer8.Add(self.keyJog, 0, wx.ALL| wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)  
+	
+	
+	#print port.allowKeyboard
+	
+	
+	if port.allowKeyboard :
+	  self.keyJog.SetValue(True)
+	  
+	else :
+	  self.keyJog.SetValue(False)
    
-        autoButton = wx.Button(self, -1, 'Auto-Config')
-        sizer.Add(autoButton, 0, wx.ALL|wx.ALIGN_CENTER, 5)
+        #autoButton = wx.Button(self, -1, 'Auto-Config')
+        #sizer.Add(autoButton, 0, wx.ALL|wx.ALIGN_CENTER, 5)
 
         doneButton = wx.Button(self, -1, 'Done')
         sizer.Add(doneButton, 0, wx.ALL|wx.ALIGN_CENTER, 5)  
         
         self.Bind(wx.EVT_BUTTON, self.done,doneButton)
-        self.Bind(wx.EVT_BUTTON, self.autoDetect,autoButton)
+        #self.Bind(wx.EVT_BUTTON, self.autoDetect,autoButton)
 
         self.SetSizer(sizer)
 
@@ -522,6 +542,7 @@ class configSerial(wx.Dialog):
         port.parity = self.parityCombo.GetValue()
         port.stopBit = int(self.stopCombo.GetValue())
         self.flowControl = self.flowCombo.GetValue()
+        port.allowKeyboard = self.keyJog.GetValue()
 
         port.rtscts = 0
         port.xonxoff = 0
@@ -540,7 +561,7 @@ class configSerial(wx.Dialog):
 
           
         print "Name: " + port.name
-        port.reset()
+        port.flushSerial()
 		
         self.Close(True)
                 
@@ -575,7 +596,7 @@ class configSerial(wx.Dialog):
         return self.ports  
         
 class Port() :		# Dummy class to encapsulate the serial port attributes;  Cleaner than global  also a couple of helper methods
-  def __init__(self) :     
+  def __init__(self) : 
     self.name = '/dev/ttyACM0'
     self.baud = 0
     self.dataBits = 8
@@ -583,13 +604,18 @@ class Port() :		# Dummy class to encapsulate the serial port attributes;  Cleane
     self.stopBits = 1
     self.timeout = 1
     self.rtscts = 0
-    
+    self.allowKeyboard = True    
   
-  def reset(self) :
+  def flushSerial(self) :
     global ser
-    ser.flushInput()
-    time.sleep(2)
-    ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
+    
+    try :
+      ser.flushInput()
+      time.sleep(2)
+      ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
+	 
+    except :
+      print "Error"
     
 port = Port()
 
