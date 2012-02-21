@@ -289,7 +289,8 @@ class MainWindow(wx.Frame):
       ret  = wx.MessageBox('Are you sure you want to set HOME?', 'Question', 
 	wx.YES_NO | wx.NO_DEFAULT, self)
       if ret == wx.YES:
-	ser.write("G92 X0 Y0 Z0\n")
+	#ser.write("G92 X0 Y0 Z0\n")
+	self.sendCommand("G92", "X0 Y0 Z0")
 	x=0
 	y=0
 	z=0
@@ -347,34 +348,51 @@ class MainWindow(wx.Frame):
     def XPlus (self, e) :  	#	Increment X
       global x
       x = x + self.readDistance()
-      self.sendCommand('x')
+      self.move('x')
      
     def XMinus (self, e) :	#	Decrement X
       global x
       x = x - self.readDistance()
-      self.sendCommand('x')
+      self.move('x')
       
     def YPlus (self, e) :	#	Increment Y
       global y
       y = y + self.readDistance()
-      self.sendCommand('y')
+      self.move('y')
     
     def YMinus (self, e) :	#	Decrement Y
       global y
       y = y - self.readDistance()
-      self.sendCommand('y')
+      self.move('y')
     
     def ZPlus(self, e) :	#	Increment Z
       global z
       z = z + self.readDistance()
-      self.sendCommand('z')
+      self.move('z')
     
     def ZMinus(self, e) :	#	Decrement Z
       global z
       z = z - self.readDistance()
-      self.sendCommand('z')
+      self.move('z')
+      
+    def sendCommand(self, command, option) :   
+      global ser  
+      
+      command = str(command) + " " + str(option + "\n")
+      
+      try :
+	ser.write(command)
+      except :
+	self.showComWriteError()
+      
+      grbl_response = ser.readline() 	# Wait for grbl response with carriage return       
+      self.statusBar.SetStatusText("Sent: " + command.strip() + ": " + "\tReceived: " +grbl_response)
+      
+      print grbl_response
+      if not grbl_response :
+	self.showComTimeoutError()
     
-    def sendCommand(self, axis) :   
+    def move(self, axis) :   
       global ser
       
       try :
