@@ -280,13 +280,31 @@ class MainWindow(wx.Frame):
     def onStop(self, e) :
       print "Stop"
       
-    def setHome(self, e) :
-      print "set home"
-      ser.write("G92 X0 Y0 Z0")
-      print ser.readline()
+    def setHome(self, e) :     
+      global x
+      global y
+      global z
+      global ser
+      
+      ret  = wx.MessageBox('Are you sure you want to set HOME?', 'Question', 
+	wx.YES_NO | wx.NO_DEFAULT, self)
+      if ret == wx.YES:
+	ser.write("G92 X0 Y0 Z0\n")
+	x=0
+	y=0
+	z=0
+	#print "Reset"
+      #print ser.readline()
       
     def resetController(self, e) :
-      print "reset Controller"
+      global ser
+      ret  = wx.MessageBox('Are you sure you want to RESET the controller?', 'Question', 
+	wx.YES_NO | wx.NO_DEFAULT, self)
+      if ret == wx.YES:
+	ser.close()
+	ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
+	port.reset()
+	print "reset Controller"
     
     
     def showComError(self) :     #	Can't open COM port
