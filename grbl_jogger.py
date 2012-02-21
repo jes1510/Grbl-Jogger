@@ -54,43 +54,14 @@ ser = serial.Serial()
 serialEVT, EVT_SERIAL = wx.lib.newevent.NewEvent()  
 
 class MainWindow(wx.Frame):
-    def __init__(self, parent, title="Grbl_Jogger") :  
-	global baud
-	#global port 
+    def __init__(self, parent, title="Grbl_Jogger") : 	
+	global ser
 	
         self.parent = parent 
         self.dirname = '.' 
-  
-    #	Read Configuration from file
-        self.cfg = wx.Config('grblJoggerConfig')
-        #if self.cfg.Exists('port'):	  
-	#  print "Reading Configuration"
-        #  port = self.cfg.Read('port')
-        #  baud = self.cfg.ReadInt('baud')
-          
-         # self.portIsConfigured = 1
-        #else:
-	#  f2 = serialConfig(self.parent)
-	  
-         # port = '/dev/ttyACM0'
-         # baud = 9600
-         # print "Creating config"
-         # self.cfg.Write("port", port)
-         # self.cfg.WriteInt("baud", baud)
-         
-	try :
-	  self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-	  
-	except :
-	  self.showComError()
-	  
-	time.sleep(2)			# Give Grbl time to come up and respond
-	self.ser.flushInput()		# Dump all the initial Grbl stuff	
-	self.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
-	  
+        
 	
-
-
+		
 	#print "using port " + port
 	#print "using baud " + str(baud)
 	
@@ -221,6 +192,30 @@ class MainWindow(wx.Frame):
         self.Layout()
 	self.Show(True)	
 	
+	#Read Configuration from file
+        self.cfg = wx.Config('grblJoggerConfig')
+        if self.cfg.Exists('port'):
+	  print "Reading Configuration"
+	  port.name = self.cfg.Read('port')
+	  port.baud = self.cfg.ReadInt('baud')         
+        
+        else:
+	  print "No config"
+         # self.cfg.Write("port", port)
+         # self.cfg.WriteInt("baud", baud)
+	
+	try :
+	  #ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+	  ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
+	  #self.ser = serial.Serial(port.name, port.baud, timeout = port.timeout)
+	  time.sleep(2)			# Give Grbl time to come up and respond
+	  ser.flushInput()		# Dump all the initial Grbl stuff	
+	  ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
+	  
+	except :
+	  self.showComError()  
+	  
+	
 
 	
     def OnKeyDown(self, event):
@@ -228,7 +223,7 @@ class MainWindow(wx.Frame):
       global y
       global z
       keycode = event.GetKeyCode()
-      print keycode
+      #print keycode
       if keycode == wx.WXK_ESCAPE:
         ret  = wx.MessageBox('Are you sure to quit?', 'Question', 
 	wx.YES_NO | wx.NO_DEFAULT, self)
@@ -269,7 +264,6 @@ class MainWindow(wx.Frame):
     def setupPort(self, e) :        
       dia = configSerial(self, -1)
       dia.ShowModal()
-      #self.showReady()
       self.portIsConfigured = 1
       dia.Destroy() 
 	
@@ -295,7 +289,7 @@ class MainWindow(wx.Frame):
     def showComError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Could not open COM port!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
-        #self.onExit(self)	#	Dump out
+        self.setupPort(None)
         
     def showComWriteError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Error writing to Com port!", 'Error!', wx.OK | wx.ICON_ERROR)  
@@ -312,7 +306,7 @@ class MainWindow(wx.Frame):
     def onExit(self,e):         # stuff to do when the program is ending     
         global ser
         try :
-	  self.ser.close()  	# Needs to be in a try in case it wasn't opened
+	  ser.close()  	# Needs to be in a try in case it wasn't opened
 	except :
 	  pass
 	
@@ -357,6 +351,8 @@ class MainWindow(wx.Frame):
       self.sendCommand('z')
     
     def sendCommand(self, axis) :   
+      global ser
+      
       try :
 	speed = str(int(self.speedBox.GetValue()))
 	speedCommand = "f" + speed + "\n"  
@@ -376,13 +372,14 @@ class MainWindow(wx.Frame):
       dirCommand = "G0 " + "f" + speed + " " + axis + str(value) + "\n"
       
       try :
-	self.ser.write(dirCommand)
+	ser.write(dirCommand)
       except :
 	self.showComWriteError()
       
-      grbl_response = self.ser.readline() 	# Wait for grbl response with carriage return       
+      grbl_response = ser.readline() 	# Wait for grbl response with carriage return       
       self.statusBar.SetStatusText("Sent: " + dirCommand.strip() + ": " + "\tReceived: " +grbl_response)
       
+      print grbl_response
       if not grbl_response :
 	self.showComTimeoutError()
     
@@ -476,9 +473,7 @@ class configSerial(wx.Dialog):
 
 
     def done(self, e) :
-        global ser
-	
-	
+        global ser	
         port.name = self.portsCombo.GetValue()
         port.baud = int(self.baudCombo.GetValue())
         port.dataBits = int(self.bitsCombo.GetValue())
@@ -496,19 +491,25 @@ class configSerial(wx.Dialog):
             port.rtscts = 0                
 
         if self.ports != "No Ports Found" :
-            ser = serial.Serial(port= port.name, baudrate= port.baud, bytesize=port.dataBits, parity= port.parity,\
-            stopbits=port.stopBit, timeout = None, xonxoff= port.xonxoff, rtscts=port.rtscts)
-          #  if ser.isOpen() :
-          #      print "Yay from config"
+           #ser = serial.Serial(port= port.name, baudrate= port.baud, bytesize=port.dataBits, parity= port.parity,\
+           # stopbits=port.stopBit, timeout = None, xonxoff= port.xonxoff, rtscts=port.rtscts)
+           #ser = serial.Serial(port.name, baudrate=port.baud, timeout=port.timeout)
+           ser = serial.Serial('/dev/ttyACM0', 9600, timeout=2)
+
+           if ser.isOpen() :
+	      print "Yay from config"
           
         print "Name: " + port.name
+        port.reset()
+		
         self.Close(True)
                 
         
     def autoDetect(self, e) :
         print "To be added"
 
-    def findPorts(self) :        
+    def findPorts(self) :    
+	global ser
         self.ports = []
         for i in range(25) :  #  Windows
             try :                
@@ -533,15 +534,21 @@ class configSerial(wx.Dialog):
                 
         return self.ports  
         
-class Port() :		# Dummy class to encapsulate the serial port attributes;  Cleaner than global
-  def __init__(self) : 
-    self.name = ''
+class Port() :		# Dummy class to encapsulate the serial port attributes;  Cleaner than global  also a couple of helper methods
+  def __init__(self) :     
+    self.name = '/dev/ttyACM0'
     self.baud = 0
     self.dataBits = 8
     self.parity = 'n'
     self.stopBits = 1
-    self.timeout = 2
+    self.timeout = 1
     self.rtscts = 0
+    
+  
+  def reset(self) :
+    global ser
+    ser.flushInput()
+    time.sleep(2)
     
 port = Port()
 
