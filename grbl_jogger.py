@@ -79,7 +79,7 @@ class MainWindow(wx.Frame):
         menuBar.Append(helpmenu, "Help")
         self.SetMenuBar(menuBar)                            # Adding the MenuBar to the Frame content.
         
-        menuPorts = setupmenu.Append(wx.ID_NEW, "Select Port", "Configure serial port");
+        menuPorts = setupmenu.Append(wx.ID_NEW, "Settings", "Configure serial port");
       
 	menuOpen = filemenu.Append(wx.ID_OPEN, "&Open"," Open a file to edit")
         
@@ -119,8 +119,10 @@ class MainWindow(wx.Frame):
         YPlusButton = wx.Button(self.jogPanel, -1, 'Y+',size=(75,75))
         YMinusButton = wx.Button(self.jogPanel, -1, 'Y-',size=(75,75))
         ZPlusButton = wx.Button(self.jogPanel, -1, 'Z+',size=(75,75))
-        ZMinusButton = wx.Button(self.jogPanel, -1, 'Z-',size=(75,75))        
-        setHomeButton = wx.Button(self.jogPanel, -1, 'Set Home')     
+        ZMinusButton = wx.Button(self.jogPanel, -1, 'Z-',size=(75,75))   
+        goHomeButton = wx.Button(self.jogPanel, -1, 'Go Home') 
+        setHomeButton = wx.Button(self.jogPanel, -1, 'Set Home')    
+        
         resetButton = wx.Button(self.jogPanel, -1, 'Reset Controller') 
         
         self.codeViewer = wx.TextCtrl(self.jogPanel, -1, '', style=wx.TE_MULTILINE|wx.VSCROLL)
@@ -140,9 +142,10 @@ class MainWindow(wx.Frame):
         self.buttonSizer.Add(YPlusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(YMinusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(ZPlusButton, 1, wx.EXPAND)
-        self.buttonSizer.Add(ZMinusButton, 1, wx.EXPAND)         
-        self.buttonSizer2.Add(setHomeButton, 1, wx.EXPAND)
-        self.buttonSizer2.Add(resetButton, 1, wx.EXPAND)
+        self.buttonSizer.Add(ZMinusButton, 1, wx.EXPAND)  
+        self.buttonSizer2.Add(setHomeButton, 1)
+        self.buttonSizer2.Add(resetButton, 1)
+        self.buttonSizer2.Add(goHomeButton, 1)
         
         self.editorSizer1.Add(self.codeViewer, 1, wx.EXPAND)      
         self.editorSizer2.Add(startButton, 1, wx.EXPAND)
@@ -178,8 +181,9 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.ZPlus, ZPlusButton)
         self.Bind(wx.EVT_BUTTON, self.ZMinus, ZMinusButton)
         
-        self.Bind(wx.EVT_BUTTON, self.setHome, setHomeButton)
+        self.Bind(wx.EVT_BUTTON, self.setHome, setHomeButton)        
         self.Bind(wx.EVT_BUTTON, self.resetController, resetButton)
+        self.Bind(wx.EVT_BUTTON, self.goHome, goHomeButton)
         
         self.Bind(wx.EVT_BUTTON, self.onStart, startButton)
         self.Bind(wx.EVT_BUTTON, self.onStop, stopButton)
@@ -217,7 +221,7 @@ class MainWindow(wx.Frame):
       
       if port.allowKeyboard :	
 	keycode = event.GetKeyCode()
-        print keycode
+        #print keycode
 	if keycode == wx.WXK_ESCAPE :
 	  ret  = wx.MessageBox('Are you sure to quit?', 'Question', 
 	  wx.YES_NO | wx.NO_DEFAULT, self)
@@ -280,7 +284,7 @@ class MainWindow(wx.Frame):
       global z
       #global ser
       
-      ret  = wx.MessageBox('Are you sure you want to set HOME?', 'Question', 
+      ret  = wx.MessageBox('Are you sure you want to set the current location as HOME?', 'Question', 
 	wx.YES_NO | wx.NO_DEFAULT, self)
       if ret == wx.YES:
 	#ser.write("G92 X0 Y0 Z0\n")
@@ -289,6 +293,9 @@ class MainWindow(wx.Frame):
 	y=0
 	z=0
 
+    def goHome(self, e) :
+      self.sendCommand("G1", "X0 Y0")
+      self.sendCommand("G0", "Z0")
       
     def resetController(self, e) :
       #global ser
@@ -509,7 +516,7 @@ class configSerial(wx.Dialog):
         #autoButton = wx.Button(self, -1, 'Auto-Config')
         #sizer.Add(autoButton, 0, wx.ALL|wx.ALIGN_CENTER, 5)
 
-        doneButton = wx.Button(self, -1, 'Done')
+        doneButton = wx.Button(self, -1, 'Save Settings')
         cancelButton = wx.Button(self, -1, 'Cancel')
         sizer.Add(doneButton, 0, wx.ALL|wx.ALIGN_CENTER, 5)  
         sizer.Add(cancelButton, 0, wx.ALL|wx.ALIGN_CENTER, 5)  
