@@ -79,7 +79,8 @@ class MainWindow(wx.Frame):
         menuBar.Append(helpmenu, "Help")
         self.SetMenuBar(menuBar)                            # Adding the MenuBar to the Frame content.
         
-        menuPorts = setupmenu.Append(wx.ID_NEW, "Settings", "Configure serial port");
+        menuPorts = setupmenu.Append(wx.ID_NEW, "Settings", "Change settings");
+        menuReset = setupmenu.Append(wx.ID_NEW, "Reset Controller", "Hard Reset the controller");
       
 	menuOpen = filemenu.Append(wx.ID_OPEN, "&Open"," Open a file to edit")
         
@@ -88,10 +89,7 @@ class MainWindow(wx.Frame):
         menuExit = filemenu.Append(wx.ID_EXIT,"E&xit"," Terminate the program")     
         menuAbout = helpmenu.Append(wx.ID_ABOUT, "&About"," Information about this program")  
         
-        self.jogPanel = wx.Panel(self, -1, style=wx.SUNKEN_BORDER)       
-        #self.editorPanel1 = wx.Panel(self, -1, style = wx.SUNKEN_BORDER)
-        #self.editorPanel2 = wx.Panel(self, -1, style = wx.SUNKEN_BORDER)
-        #self.editorPanel3 = wx.Panel(self, -1, style = wx.SUNKEN_BORDER)
+        self.jogPanel = wx.Panel(self, -1, style=wx.SUNKEN_BORDER)   
         
         #   Build sizers and statusbar
         self.topSizer = wx.BoxSizer(wx.HORIZONTAL) 
@@ -111,8 +109,6 @@ class MainWindow(wx.Frame):
         self.speedLabel = wx.StaticText(self.jogPanel, 1, "IPM:")
         self.speedBox = wx.TextCtrl(self.jogPanel)    
         
-
-        
         #	Buttons;  One per direction
         XPlusButton = wx.Button(self.jogPanel, -1, 'X+',size=(75,75))
         XMinusButton = wx.Button(self.jogPanel, -1, 'X-',size=(75,75))
@@ -123,7 +119,7 @@ class MainWindow(wx.Frame):
         goHomeButton = wx.Button(self.jogPanel, -1, 'Go Home') 
         setHomeButton = wx.Button(self.jogPanel, -1, 'Set Home')    
         
-        resetButton = wx.Button(self.jogPanel, -1, 'Reset Controller') 
+        #resetButton = wx.Button(self.jogPanel, -1, 'Reset Controller') 
         
         self.codeViewer = wx.TextCtrl(self.jogPanel, -1, '', style=wx.TE_MULTILINE|wx.VSCROLL)
         startButton = wx.Button(self.jogPanel, -1, 'Start')
@@ -144,7 +140,6 @@ class MainWindow(wx.Frame):
         self.buttonSizer.Add(ZPlusButton, 1, wx.EXPAND)
         self.buttonSizer.Add(ZMinusButton, 1, wx.EXPAND)  
         self.buttonSizer2.Add(setHomeButton, 1)
-        self.buttonSizer2.Add(resetButton, 1)
         self.buttonSizer2.Add(goHomeButton, 1)
         
         self.editorSizer1.Add(self.codeViewer, 1, wx.EXPAND)      
@@ -173,6 +168,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onExit, menuExit)
         self.Bind(wx.EVT_MENU, self.onOpen, menuOpen)
         self.Bind(wx.EVT_MENU, self.setupPort, menuPorts)
+        self.Bind(wx.EVT_MENU, self.resetController, menuReset)
         self.Bind(wx.EVT_MENU, self.onSave, menuSave)
         self.Bind(wx.EVT_BUTTON, self.XPlus, XPlusButton)
         self.Bind(wx.EVT_BUTTON, self.XMinus, XMinusButton)
@@ -181,8 +177,8 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.ZPlus, ZPlusButton)
         self.Bind(wx.EVT_BUTTON, self.ZMinus, ZMinusButton)
         
-        self.Bind(wx.EVT_BUTTON, self.setHome, setHomeButton)        
-        self.Bind(wx.EVT_BUTTON, self.resetController, resetButton)
+        self.Bind(wx.EVT_BUTTON, self.setHome, setHomeButton)  
+
         self.Bind(wx.EVT_BUTTON, self.goHome, goHomeButton)
         
         self.Bind(wx.EVT_BUTTON, self.onStart, startButton)
@@ -203,9 +199,7 @@ class MainWindow(wx.Frame):
 	self.Show(True)		
 	
 	try :
-	  #ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
 	  port.ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
-	  #self.ser = serial.Serial(port.name, port.baud, timeout = port.timeout)
 	  time.sleep(2)			# Give Grbl time to come up and respond
 	  port.ser.flushInput()		# Dump all the initial Grbl stuff	
 	  port.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
@@ -302,7 +296,11 @@ class MainWindow(wx.Frame):
       ret  = wx.MessageBox('Are you sure you want to RESET the controller?', 'Question', 
 	wx.YES_NO | wx.NO_DEFAULT, self)
       if ret == wx.YES:
-	port.reset()
+	if port.reset() :	
+	  self.showResetOk()
+	  
+	else :
+	  self.showResetFailed()
     
     def saveOptions(self) :
 	
@@ -324,6 +322,14 @@ class MainWindow(wx.Frame):
         dlg = wx.MessageDialog(self, "Error writing to Com port!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
         
+    def showResetOk(self) :
+	dlg = wx.MessageDialog(self, "Serial Port successfully reset!", 'OK!', wx.OK | wx.ICON_INFORMATION)
+	dlg.ShowModal()
+        
+    def showResetFailed(self) :
+	dlg = wx.MessageDialog(self, "Serial Port reset FAILED!", 'Error!', wx.OK | wx.ICON_ERROR)
+	dlg.ShowModal()    
+    
     def showComTimeoutError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Controller did not respond!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal() 
@@ -607,9 +613,14 @@ class Port() :		# Dummy class to encapsulate the serial port attributes;  Cleane
     print "Trying: " + self.ser.readline()
       
   def reset(self) :
-    self.ser.close()
-    self.ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
-    self.flushSerial()   
+    try :
+      self.ser.close()
+      self.ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
+      self.flushSerial() 
+      return 1
+    except :
+      return 0
+ 
     
     
 port = Port()
