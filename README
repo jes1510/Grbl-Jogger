@@ -11,7 +11,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
+Just an edit
 
 Grbl-Jogger - A simple interface to send jogging commands to a CNC controller running GRBL.  Written in python using wxPython.  It depends on wxPython and pySerial, two awesome and free modules.  
 
