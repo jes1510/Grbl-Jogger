@@ -57,6 +57,8 @@ class MainWindow(wx.Frame):
     def __init__(self, parent, title="Grbl_Jogger") : 	
 	#global ser
 	global configFile
+	
+	self.distanceList = [1, .1, .01, .05, .001]
         self.parent = parent 
         self.dirname = '.' 
         
@@ -154,19 +156,14 @@ class MainWindow(wx.Frame):
         self.rootSizer.Add(self.editorSizer2, 1, wx.EXPAND)
        
 	
-        if port.configFile.Exists('port'):
-	  print "Reading Configuration"
+        if port.configFile.Exists('port'):	
 	  port.name = port.configFile.Read('port')
 	  port.baud = port.configFile.ReadInt('baud') 
 	  port.timeout = port.configFile.ReadInt('timeout')
 	  port.allowKeyboard = port.configFile.Read('allowKeyboard')
         
         else:
-	  print "No config"
-         # self.cfg.Write("port", port)
-         # self.cfg.WriteInt("baud", baud)
-	
-
+	  self.saveOptions()
 	  
         self.Bind(wx.EVT_CLOSE, self.onExit)        
 #       self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
@@ -220,7 +217,7 @@ class MainWindow(wx.Frame):
       
       if port.allowKeyboard :	
 	keycode = event.GetKeyCode()
-      #print keycode
+        print keycode
 	if keycode == wx.WXK_ESCAPE :
 	  ret  = wx.MessageBox('Are you sure to quit?', 'Question', 
 	  wx.YES_NO | wx.NO_DEFAULT, self)
@@ -261,7 +258,8 @@ class MainWindow(wx.Frame):
     def setupPort(self, e) :        
       dia = configSerial(self, -1)
       dia.ShowModal()
-      self.saveOptions()    
+      self.saveOptions()   
+      
       dia.Destroy() 
 	
     def onStart(self, e) :
@@ -297,20 +295,15 @@ class MainWindow(wx.Frame):
       ret  = wx.MessageBox('Are you sure you want to RESET the controller?', 'Question', 
 	wx.YES_NO | wx.NO_DEFAULT, self)
       if ret == wx.YES:
-	port.ser.close()
-	port.ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
-	port.flushSerial()
-	print "reset Controller"
+	port.reset()
     
     def saveOptions(self) :
-	global configFile
+	
 	port.configFile.Write("port", port.name)
         port.configFile.WriteInt("baud", port.baud)
         port.configFile.WriteInt("timeout", port.timeout)
         port.configFile.WriteInt("allowKeyboard", port.allowKeyboard)          
-	port.configFile.Flush()
-	
-       
+	port.configFile.Flush()       
         print "Saved Options"
     
     def showComError(self) :     #	Can't open COM port
@@ -379,11 +372,8 @@ class MainWindow(wx.Frame):
       z = z - self.readDistance()
       self.move('z')
       
-    def sendCommand(self, command, option) :   
-      #global ser  
-      
-      command = str(command) + " " + str(option + "\n")
-      
+    def sendCommand(self, command, option) : 
+      command = str(command) + " " + str(option + "\n")      
       try :
 	port.ser.write(command)
       except :
@@ -392,7 +382,7 @@ class MainWindow(wx.Frame):
       grbl_response = port.ser.readline() 	# Wait for grbl response with carriage return       
       self.statusBar.SetStatusText("Sent: " + command.strip() + ": " + "\tReceived: " +grbl_response)
       
-      print grbl_response
+      print "From sendCommand " + grbl_response
       if not grbl_response :
 	self.showComTimeoutError()
     
@@ -560,8 +550,7 @@ class configSerial(wx.Dialog):
         print "Name: " + port.name
         port.flushSerial()
 		
-        self.Close(True)
-                
+        self.Close(True)                
         
     def autoDetect(self, e) :
         print "To be added"
@@ -604,16 +593,17 @@ class Port() :		# Dummy class to encapsulate the serial port attributes;  Cleane
     self.configFile = wx.Config('grblJoggerConfig')
     self.ser =  serial.Serial() 
   
-  def flushSerial(self) :
-    #global ser
+  def flushSerial(self) :  
+    time.sleep(2)
+    port.ser.flushInput()    
+    port.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
+    print "Trying: " + self.ser.readline()
+      
+  def reset(self) :
+    self.ser.close()
+    self.ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
+    self.flushSerial()   
     
-    try :
-      port.ser.flushInput()
-      time.sleep(2)
-      ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
-	 
-    except :
-      print "Error"
     
 port = Port()
 
