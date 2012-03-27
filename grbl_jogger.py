@@ -79,11 +79,11 @@ class MainWindow(wx.Frame):
         menuBar.Append(helpmenu, "Help")
         self.SetMenuBar(menuBar)                            # Adding the MenuBar to the Frame content.
         
-        menuPorts = setupmenu.Append(wx.ID_NEW, "Settings", "Change settings");
-        menuReset = setupmenu.Append(wx.ID_NEW, "Reset Controller", "Hard Reset the controller");
+        menuPorts = setupmenu.Append(wx.ID_ANY, "Settings", "Change settings")
+        menuReset = setupmenu.Append(wx.ID_ANY, "Reset Controller", "Hard Reset the controller")
+	
       
-	menuOpen = filemenu.Append(wx.ID_OPEN, "&Open"," Open a file to edit")
-        
+	menuOpen = filemenu.Append(wx.ID_OPEN, "&Open"," Open a file to edit")        
         menuSave = filemenu.Append(wx.ID_SAVE, "Save", "Save the current data")     
         filemenu.AppendSeparator()
         menuExit = filemenu.Append(wx.ID_EXIT,"E&xit"," Terminate the program")     
@@ -166,10 +166,11 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.onExit)        
 #       self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
         self.Bind(wx.EVT_MENU, self.onExit, menuExit)
-        self.Bind(wx.EVT_MENU, self.onOpen, menuOpen)
-        self.Bind(wx.EVT_MENU, self.setupPort, menuPorts)
-        self.Bind(wx.EVT_MENU, self.resetController, menuReset)
+        self.Bind(wx.EVT_MENU, self.onOpen, menuOpen)	
+	self.Bind(wx.EVT_MENU, self.resetController, menuReset)
+        self.Bind(wx.EVT_MENU, self.setupPort, menuPorts)        
         self.Bind(wx.EVT_MENU, self.onSave, menuSave)
+
         self.Bind(wx.EVT_BUTTON, self.XPlus, XPlusButton)
         self.Bind(wx.EVT_BUTTON, self.XMinus, XMinusButton)
         self.Bind(wx.EVT_BUTTON, self.YPlus, YPlusButton)
@@ -205,7 +206,7 @@ class MainWindow(wx.Frame):
 	  port.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
 	  
 	except :
-	  self.showComError() #vents to buttons
+	  self.showComError() 
 
 	
     def OnKeyDown(self, event):
@@ -253,10 +254,11 @@ class MainWindow(wx.Frame):
             f.close()
         dlg.Destroy()
         
-    def setupPort(self, e) :        
+    def setupPort(self, e) : 
+      print "Settings"       
       dia = configSerial(self, -1)
       dia.ShowModal()
-      self.saveOptions()   
+      self.saveOptions()  
       
       dia.Destroy() 
 	
@@ -302,8 +304,7 @@ class MainWindow(wx.Frame):
 	else :
 	  self.showResetFailed()
     
-    def saveOptions(self) :
-	
+    def saveOptions(self) :	
 	port.configFile.Write("port", port.name)
         port.configFile.WriteInt("baud", port.baud)
         port.configFile.WriteInt("timeout", port.timeout)
