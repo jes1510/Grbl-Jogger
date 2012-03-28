@@ -19,7 +19,7 @@ Sends jog commands to an Arduino running grbl.  Builds a very simple G-Code stri
 sends it to the controller.  Only one move at a time is supported although the controller
 will buffer commands.
 
-Here is an awesome wx tutorial I cam acoss while writing this:
+Here is an awesome wx tutorial I cam across while writing this:
 http://wiki.wxpython.org/AnotherTutorial
 
 The GUI requires WX.
@@ -31,6 +31,7 @@ wx.lib.newevent:  Event manager
 
 Change Log:
 ------------------------------------------------------------------------------------------------------
+Meh, I'll let git track this...
 
 
 '''
@@ -56,8 +57,12 @@ class MainWindow(wx.Frame):
 	
 	self.distanceList = ['1.0', '0.1', '0.05', '0.01', '0.005', '0.001']
         self.parent = parent 
+<<<<<<< HEAD
         self.dirname = '.'       
 	
+=======
+        self.dirname = '.' 
+>>>>>>> 1bfd2de8fc838b9bd3762859ee584c598ff43802
 		
 	#print "using port " + port
 	#print "using baud " + str(baud)
@@ -74,11 +79,15 @@ class MainWindow(wx.Frame):
         menuBar.Append(helpmenu, "Help")
         self.SetMenuBar(menuBar)                            # Adding the MenuBar to the Frame content.
         
+<<<<<<< HEAD
         menuPorts = setupmenu.Append(wx.ID_ANY, "Settings", "Change settings");
         menuReset = setupmenu.Append(wx.ID_ANY, "Reset Controller", "Hard Reset the controller");
+=======
+        menuPorts = setupmenu.Append(wx.ID_ANY, "Settings", "Change settings")
+        menuReset = setupmenu.Append(wx.ID_ANY, "Reset Controller", "Hard Reset the controller")	
+>>>>>>> 1bfd2de8fc838b9bd3762859ee584c598ff43802
       
-	menuOpen = filemenu.Append(wx.ID_OPEN, "&Open"," Open a file to edit")
-        
+	menuOpen = filemenu.Append(wx.ID_OPEN, "&Open"," Open a file to edit")        
         menuSave = filemenu.Append(wx.ID_SAVE, "Save", "Save the current data")     
         filemenu.AppendSeparator()
         menuExit = filemenu.Append(wx.ID_EXIT,"E&xit"," Terminate the program")     
@@ -91,9 +100,7 @@ class MainWindow(wx.Frame):
         self.buttonSizer = wx.BoxSizer(wx.HORIZONTAL) 
         self.buttonSizer2 = wx.BoxSizer(wx.HORIZONTAL)
         self.editorSizer1 = wx.BoxSizer(wx.VERTICAL) 
-        self.editorSizer2 = wx.BoxSizer(wx.HORIZONTAL)      
-        #self.editorSizer3 = wx.BoxSizer(wx.HORIZONTAL)
-        
+        self.editorSizer2 = wx.BoxSizer(wx.HORIZONTAL)   
         self.rootSizer = wx.BoxSizer(wx.VERTICAL)                        
         self.statusBar = self.CreateStatusBar()                              # statusbar in the bottom of the window    
         
@@ -113,12 +120,21 @@ class MainWindow(wx.Frame):
         self.distCombo=wx.ComboBox(self.jogPanel, -1, choices=self.distanceList, style=wx.CB_READONLY)
  
         goHomeButton = wx.Button(self.jogPanel, -1, 'Go Home') 
+<<<<<<< HEAD
         setHomeButton = wx.Button(self.jogPanel, -1, 'Set Home')   
+=======
+        setHomeButton = wx.Button(self.jogPanel, -1, 'Set Home')  
+>>>>>>> 1bfd2de8fc838b9bd3762859ee584c598ff43802
         
         self.codeViewer = wx.TextCtrl(self.jogPanel, -1, '', style=wx.TE_MULTILINE|wx.VSCROLL)
         startButton = wx.Button(self.jogPanel, -1, 'Start')
         stopButton = wx.Button(self.jogPanel, -1, 'Stop')
+<<<<<<< HEAD
         pauseButton = wx.Button(self.jogPanel, -1, 'Pause')    
+=======
+        pauseButton = wx.Button(self.jogPanel, -1, 'Pause')
+        
+>>>>>>> 1bfd2de8fc838b9bd3762859ee584c598ff43802
 
         #  Sizers.  Everything is on rootSizer   
         self.topSizer.Add(self.Xrb, 1, wx.EXPAND)
@@ -157,10 +173,20 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.onExit)        
 #       self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
         self.Bind(wx.EVT_MENU, self.onExit, menuExit)
-        self.Bind(wx.EVT_MENU, self.onOpen, menuOpen)
-        self.Bind(wx.EVT_MENU, self.setupPort, menuPorts)
-        self.Bind(wx.EVT_MENU, self.resetController, menuReset)
+        self.Bind(wx.EVT_MENU, self.onOpen, menuOpen)	
+	self.Bind(wx.EVT_MENU, self.resetController, menuReset)
+        self.Bind(wx.EVT_MENU, self.setupPort, menuPorts)        
         self.Bind(wx.EVT_MENU, self.onSave, menuSave)
+<<<<<<< HEAD
+=======
+
+        self.Bind(wx.EVT_BUTTON, self.XPlus, XPlusButton)
+        self.Bind(wx.EVT_BUTTON, self.XMinus, XMinusButton)
+        self.Bind(wx.EVT_BUTTON, self.YPlus, YPlusButton)
+        self.Bind(wx.EVT_BUTTON, self.YMinus, YMinusButton)
+        self.Bind(wx.EVT_BUTTON, self.ZPlus, ZPlusButton)
+        self.Bind(wx.EVT_BUTTON, self.ZMinus, ZMinusButton)
+>>>>>>> 1bfd2de8fc838b9bd3762859ee584c598ff43802
         
         self.Bind(wx.EVT_BUTTON, self.movePlus, self.plusButton)
         self.Bind(wx.EVT_BUTTON, self.moveMinus, self.minusButton)
@@ -192,7 +218,7 @@ class MainWindow(wx.Frame):
 	  port.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
 	  
 	except :
-	  self.showComError() #vents to buttons
+	  self.showComError() 
 
 	
     def OnKeyDown(self, event):
@@ -240,10 +266,11 @@ class MainWindow(wx.Frame):
             f.close()
         dlg.Destroy()
         
-    def setupPort(self, e) :        
+    def setupPort(self, e) : 
+      print "Settings"       
       dia = configSerial(self, -1)
       dia.ShowModal()
-      self.saveOptions()   
+      self.saveOptions()  
       
       dia.Destroy() 
 	
@@ -263,12 +290,10 @@ class MainWindow(wx.Frame):
       global x
       global y
       global z
-      #global ser
       
       ret  = wx.MessageBox('Are you sure you want to set the current location as HOME?', 'Question', 
 	wx.YES_NO | wx.NO_DEFAULT, self)
       if ret == wx.YES:
-	#ser.write("G92 X0 Y0 Z0\n")
 	self.sendCommand("G92", "X0 Y0 Z0")
 	x=0
 	y=0
@@ -279,7 +304,6 @@ class MainWindow(wx.Frame):
       self.sendCommand("G0", "Z0")
       
     def resetController(self, e) :
-      #global ser
       ret  = wx.MessageBox('Are you sure you want to RESET the controller?', 'Question', 
 	wx.YES_NO | wx.NO_DEFAULT, self)
       x=0
@@ -326,8 +350,7 @@ class MainWindow(wx.Frame):
         dlg = wx.MessageDialog(self, "I need a number!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
  
-    def onExit(self,e):         # stuff to do when the program is ending     
-        #global ser
+    def onExit(self,e):         # stuff to do when the program is ending       
         try :
 	  port.ser.close()  	# Needs to be in a try in case it wasn't opened
 	except :
@@ -409,12 +432,16 @@ class MainWindow(wx.Frame):
       if not grbl_response :
 	self.showComTimeoutError()
     
+<<<<<<< HEAD
     def move(self, axis) :   
       #global ser
       global x
       global y
       global z
       print "Move!"
+=======
+    def move(self, axis) :  
+>>>>>>> 1bfd2de8fc838b9bd3762859ee584c598ff43802
       try :
 	speed = str(int(self.speedBox.GetValue()))
 	print speed
@@ -450,8 +477,6 @@ class MainWindow(wx.Frame):
 
 class configSerial(wx.Dialog):
     def __init__(self, parent, id, title = "Configure Serial Port"):
-        #global ser
-
 	self.parent= parent
 	self.id = id
 
@@ -533,9 +558,6 @@ class configSerial(wx.Dialog):
 	  
 	else :
 	  self.keyJog.SetValue(False)
-   
-        #autoButton = wx.Button(self, -1, 'Auto-Config')
-        #sizer.Add(autoButton, 0, wx.ALL|wx.ALIGN_CENTER, 5)
 
         doneButton = wx.Button(self, -1, 'Save Settings')
         cancelButton = wx.Button(self, -1, 'Cancel')
@@ -549,8 +571,7 @@ class configSerial(wx.Dialog):
     def cancel(self, e) :
       self.Close(True)
 
-    def done(self, e) :
-        #global ser	
+    def done(self, e) :	
         port.name = self.portsCombo.GetValue()
         port.baud = int(self.baudCombo.GetValue())
         port.dataBits = int(self.bitsCombo.GetValue())
@@ -558,7 +579,6 @@ class configSerial(wx.Dialog):
         port.stopBit = int(self.stopCombo.GetValue())
         self.flowControl = self.flowCombo.GetValue()
         port.allowKeyboard = self.keyJog.GetValue()
-
         port.rtscts = 0
         port.xonxoff = 0
 
@@ -569,19 +589,13 @@ class configSerial(wx.Dialog):
             port.rtscts = 0                
 
         if self.ports != "No Ports Found" :
-           #ser = serial.Serial(port= port.name, baudrate= port.baud, bytesize=port.dataBits, parity= port.parity,\
-           # stopbits=port.stopBit, timeout = None, xonxoff= port.xonxoff, rtscts=port.rtscts)
            port.ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
-           #ser = serial.Serial('/dev/ttyACM0', 9600, timeout=2)	      
 
-          
         print "Name: " + port.name
         port.flushSerial()
 		
-        self.Close(True)                
-        
-    def autoDetect(self, e) :
-        print "To be added"
+        self.Close(True)              
+
 
     def findPorts(self) :  	
         self.ports = []
@@ -596,7 +610,7 @@ class configSerial(wx.Dialog):
         if len(self.ports) > 0 : 
             return self.ports
 
-	for i in range(25) :
+	for i in range(25) :	
 	  for k in ["/dev/ttyUSB", "/dev/ttyACM", "/dev/ttyS"] : # Linux
             try :		
                 s = serial.Serial(k+str(i))
