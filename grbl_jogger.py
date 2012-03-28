@@ -46,10 +46,6 @@ version = "0.1"
 x = 0	# Location of X Axis
 y = 0	# Location of Y Axis
 z = 0	# Location of Z Axis
-
-
-
-
   
 serialEVT, EVT_SERIAL = wx.lib.newevent.NewEvent()  
 
@@ -78,8 +74,8 @@ class MainWindow(wx.Frame):
         menuBar.Append(helpmenu, "Help")
         self.SetMenuBar(menuBar)                            # Adding the MenuBar to the Frame content.
         
-        menuPorts = setupmenu.Append(wx.ID_NEW, "Settings", "Change settings");
-        menuReset = setupmenu.Append(wx.ID_NEW, "Reset Controller", "Hard Reset the controller");
+        menuPorts = setupmenu.Append(wx.ID_ANY, "Settings", "Change settings");
+        menuReset = setupmenu.Append(wx.ID_ANY, "Reset Controller", "Hard Reset the controller");
       
 	menuOpen = filemenu.Append(wx.ID_OPEN, "&Open"," Open a file to edit")
         
@@ -112,8 +108,8 @@ class MainWindow(wx.Frame):
         self.Xrb = wx.RadioButton(self.jogPanel, -1, 'X', style=wx.RB_GROUP)
         self.Yrb = wx.RadioButton(self.jogPanel, -1, 'Y')
         self.Zrb = wx.RadioButton(self.jogPanel, -1, 'Z')
-        plusButton = wx.Button(self.jogPanel, -1, '+',size=(75,75))
-        minusButton = wx.Button(self.jogPanel, -1, '-',size=(75,75))
+        self.plusButton = wx.Button(self.jogPanel, -1, '+',size=(75,75))
+        self.minusButton = wx.Button(self.jogPanel, -1, '-',size=(75,75))
         self.distCombo=wx.ComboBox(self.jogPanel, -1, choices=self.distanceList, style=wx.CB_READONLY)
  
         goHomeButton = wx.Button(self.jogPanel, -1, 'Go Home') 
@@ -130,8 +126,8 @@ class MainWindow(wx.Frame):
         self.topSizer.Add(self.Zrb, 1, wx.EXPAND)
         self.topSizer.Add(self.speedLabel, 1, wx.EXPAND)
         self.topSizer.Add(self.speedBox, 1)              
-        self.buttonSizer.Add(plusButton, 1, wx.EXPAND)
-        self.buttonSizer.Add(minusButton,1, wx.EXPAND)
+        self.buttonSizer.Add(self.plusButton, 1, wx.EXPAND)
+        self.buttonSizer.Add(self.minusButton,1, wx.EXPAND)
         #self.buttonSizer.Add(self.speedLabel, 1, wx.EXPAND)
         self.buttonSizer.Add(self.distCombo, 1, wx.EXPAND)
         self.buttonSizer2.Add(setHomeButton, 1)
@@ -146,8 +142,7 @@ class MainWindow(wx.Frame):
         self.rootSizer.Add(self.buttonSizer, 1, wx.EXPAND)   
         self.rootSizer.Add(self.buttonSizer2, 1, wx.EXPAND) 
         self.rootSizer.Add(self.editorSizer1, 3, wx.EXPAND)        
-        self.rootSizer.Add(self.editorSizer2, 1, wx.EXPAND)
-       
+        self.rootSizer.Add(self.editorSizer2, 1, wx.EXPAND)       
 	
         if port.configFile.Exists('port'):	
 	  port.name = port.configFile.Read('port')
@@ -167,8 +162,10 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self.resetController, menuReset)
         self.Bind(wx.EVT_MENU, self.onSave, menuSave)
         
-        self.Bind(wx.EVT_BUTTON, self.setHome, setHomeButton)  
-
+        self.Bind(wx.EVT_BUTTON, self.movePlus, self.plusButton)
+        self.Bind(wx.EVT_BUTTON, self.moveMinus, self.minusButton)
+        
+        self.Bind(wx.EVT_BUTTON, self.setHome, setHomeButton) 
         self.Bind(wx.EVT_BUTTON, self.goHome, goHomeButton)
         
         self.Bind(wx.EVT_BUTTON, self.onStart, startButton)
@@ -295,8 +292,7 @@ class MainWindow(wx.Frame):
 	else :
 	  self.showResetFailed()
     
-    def saveOptions(self) :
-	
+    def saveOptions(self) :	
 	port.configFile.Write("port", port.name)
         port.configFile.WriteInt("baud", port.baud)
         port.configFile.WriteInt("timeout", port.timeout)
@@ -308,8 +304,7 @@ class MainWindow(wx.Frame):
         dlg = wx.MessageDialog(self, "Could not open COM port!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
         self.setupPort(None)
-        #self.saveOptions()
-	
+        #self.saveOptions()	
         
     def showComWriteError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Error writing to Com port!", 'Error!', wx.OK | wx.ICON_ERROR)  
@@ -342,41 +337,63 @@ class MainWindow(wx.Frame):
         
     def readDistance(self) :
       try :
-	d = abs(round(float(self.distanceBox.GetValue()), 6))
+	#d = abs(float(self.distCombo.GetValue()), 6)
+	d = float(self.distCombo.GetValue())
       	return d
       	
       except :	
 	self.showValueError()      
-
+	
+    def readAxis(self) :
+      if self.Xrb.GetValue() :
+	return 'X'
+	
+      if self.Yrb.GetValue() :
+	return 'Y'
+	
+      if self.Zrb.GetValue() :
+	return 'Z'      
+      
+    def movePlus(self, e) :
+      global x
+      global y
+      global z      
+      print "Move Plus!"
+      axis = self.readAxis()
+      if axis == 'X' :	
+	x = x + self.readDistance()	
+      if axis == 'Y' :
+	y = y + self.readDistance()
+      if axis == 'Z' :
+	z = z + self.readDistance()
+	
+      print axis + ': ' + str(x) + ' ' + str(y) + ' ' + str(z)  
+      self.move(axis)
+      
+      
+     
+    def moveMinus(self, e) :
+      global x
+      global y
+      global z      
+      print "Move Minus!"
+      axis = self.readAxis()
+      if axis == 'X' :	
+	x = x - self.readDistance()
+      if axis == 'Y' :
+	y = y - self.readDistance()
+      if axis == 'Z' :
+	z = z - self.readDistance()
+	
+      print axis + ': ' + str(x) + ' ' + str(y) + ' ' + str(z)
+      self.move(axis)
+	
+	
     def XPlus (self, e) :  	#	Increment X
       global x
       x = x + self.readDistance()
-      self.move('x')
-     
-    def XMinus (self, e) :	#	Decrement X
-      global x
-      x = x - self.readDistance()
-      self.move('x')
-      
-    def YPlus (self, e) :	#	Increment Y
-      global y
-      y = y + self.readDistance()
-      self.move('y')
-    
-    def YMinus (self, e) :	#	Decrement Y
-      global y
-      y = y - self.readDistance()
-      self.move('y')
-    
-    def ZPlus(self, e) :	#	Increment Z
-      global z
-      z = z + self.readDistance()
-      self.move('z')
-    
-    def ZMinus(self, e) :	#	Decrement Z
-      global z
-      z = z - self.readDistance()
-      self.move('z')
+      self.move('x')    
+ 
       
     def sendCommand(self, command, option) : 
       command = str(command) + " " + str(option + "\n")      
@@ -394,27 +411,32 @@ class MainWindow(wx.Frame):
     
     def move(self, axis) :   
       #global ser
-      
+      global x
+      global y
+      global z
+      print "Move!"
       try :
 	speed = str(int(self.speedBox.GetValue()))
+	print speed
 	speedCommand = "f" + speed + "\n"  
 	
       except  :
 	self.showValueError()	
        
-      if axis == 'x' :
+      if axis == 'X' :
 	value = x
 	
-      if axis == 'y' :
+      if axis == 'Y' :
 	value = y
 
-      if axis == 'z' :
+      if axis == 'Z' :
 	value = z
 	
       dirCommand = "G0 " + "f" + speed + " " + axis + str(value) + "\n"
       
       try :
 	port.ser.write(dirCommand)
+	print "Sent: " + dircommand
       except :
 	self.showComWriteError()
       
