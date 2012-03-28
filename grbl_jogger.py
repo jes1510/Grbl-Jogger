@@ -58,10 +58,9 @@ class MainWindow(wx.Frame):
 	#global ser
 	global configFile
 	
-	self.distanceList = [1, .1, .01, .05, .001]
+	self.distanceList = ['1.0', '0.1', '0.05', '0.01', '0.005', '0.001']
         self.parent = parent 
-        self.dirname = '.' 
-        
+        self.dirname = '.'       
 	
 		
 	#print "using port " + port
@@ -94,7 +93,7 @@ class MainWindow(wx.Frame):
         #   Build sizers and statusbar
         self.topSizer = wx.BoxSizer(wx.HORIZONTAL) 
         self.buttonSizer = wx.BoxSizer(wx.HORIZONTAL) 
-        self.buttonSizer2 = wx.BoxSizer(wx.VERTICAL)
+        self.buttonSizer2 = wx.BoxSizer(wx.HORIZONTAL)
         self.editorSizer1 = wx.BoxSizer(wx.VERTICAL) 
         self.editorSizer2 = wx.BoxSizer(wx.HORIZONTAL)      
         #self.editorSizer3 = wx.BoxSizer(wx.HORIZONTAL)
@@ -103,42 +102,38 @@ class MainWindow(wx.Frame):
         self.statusBar = self.CreateStatusBar()                              # statusbar in the bottom of the window    
         
         #	Input boxes for distance and speed
-        self.distanceLabel = wx.StaticText(self.jogPanel, 1, "Distance:")
-        self.distanceBox = wx.TextCtrl(self.jogPanel)    
+        #self.distanceLabel = wx.StaticText(self.jogPanel, 1, "Distance:")
+        #self.distanceBox = wx.TextCtrl(self.jogPanel)    
         
         self.speedLabel = wx.StaticText(self.jogPanel, 1, "IPM:")
         self.speedBox = wx.TextCtrl(self.jogPanel)    
         
-        #	Buttons;  One per direction
-        XPlusButton = wx.Button(self.jogPanel, -1, 'X+',size=(75,75))
-        XMinusButton = wx.Button(self.jogPanel, -1, 'X-',size=(75,75))
-        YPlusButton = wx.Button(self.jogPanel, -1, 'Y+',size=(75,75))
-        YMinusButton = wx.Button(self.jogPanel, -1, 'Y-',size=(75,75))
-        ZPlusButton = wx.Button(self.jogPanel, -1, 'Z+',size=(75,75))
-        ZMinusButton = wx.Button(self.jogPanel, -1, 'Z-',size=(75,75))   
+        #	Buttons;  One per direction        
+        self.Xrb = wx.RadioButton(self.jogPanel, -1, 'X', style=wx.RB_GROUP)
+        self.Yrb = wx.RadioButton(self.jogPanel, -1, 'Y')
+        self.Zrb = wx.RadioButton(self.jogPanel, -1, 'Z')
+        plusButton = wx.Button(self.jogPanel, -1, '+',size=(75,75))
+        minusButton = wx.Button(self.jogPanel, -1, '-',size=(75,75))
+        self.distCombo=wx.ComboBox(self.jogPanel, -1, choices=self.distanceList, style=wx.CB_READONLY)
+ 
         goHomeButton = wx.Button(self.jogPanel, -1, 'Go Home') 
-        setHomeButton = wx.Button(self.jogPanel, -1, 'Set Home')    
-        
-        #resetButton = wx.Button(self.jogPanel, -1, 'Reset Controller') 
+        setHomeButton = wx.Button(self.jogPanel, -1, 'Set Home')   
         
         self.codeViewer = wx.TextCtrl(self.jogPanel, -1, '', style=wx.TE_MULTILINE|wx.VSCROLL)
         startButton = wx.Button(self.jogPanel, -1, 'Start')
         stopButton = wx.Button(self.jogPanel, -1, 'Stop')
-        pauseButton = wx.Button(self.jogPanel, -1, 'Pause')
-        
-        
+        pauseButton = wx.Button(self.jogPanel, -1, 'Pause')    
 
-        #  Sizers.  Everything is on rootSizer         
-        self.topSizer.Add(self.distanceLabel, 1, wx.EXPAND)
-        self.topSizer.Add(self.distanceBox, 1)
+        #  Sizers.  Everything is on rootSizer   
+        self.topSizer.Add(self.Xrb, 1, wx.EXPAND)
+        self.topSizer.Add(self.Yrb, 1, wx.EXPAND)
+        self.topSizer.Add(self.Zrb, 1, wx.EXPAND)
         self.topSizer.Add(self.speedLabel, 1, wx.EXPAND)
-        self.topSizer.Add(self.speedBox, 1)        
-        self.buttonSizer.Add(XPlusButton, 1, wx.EXPAND)
-        self.buttonSizer.Add(XMinusButton,1, wx.EXPAND)
-        self.buttonSizer.Add(YPlusButton, 1, wx.EXPAND)
-        self.buttonSizer.Add(YMinusButton, 1, wx.EXPAND)
-        self.buttonSizer.Add(ZPlusButton, 1, wx.EXPAND)
-        self.buttonSizer.Add(ZMinusButton, 1, wx.EXPAND)  
+        self.topSizer.Add(self.speedBox, 1)              
+        self.buttonSizer.Add(plusButton, 1, wx.EXPAND)
+        self.buttonSizer.Add(minusButton,1, wx.EXPAND)
+        #self.buttonSizer.Add(self.speedLabel, 1, wx.EXPAND)
+        self.buttonSizer.Add(self.distCombo, 1, wx.EXPAND)
         self.buttonSizer2.Add(setHomeButton, 1)
         self.buttonSizer2.Add(goHomeButton, 1)
         
@@ -163,6 +158,7 @@ class MainWindow(wx.Frame):
         else:
 	  self.saveOptions()
 	  
+	#___________Bind Events_______________________________
         self.Bind(wx.EVT_CLOSE, self.onExit)        
 #       self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
         self.Bind(wx.EVT_MENU, self.onExit, menuExit)
@@ -170,12 +166,6 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self.setupPort, menuPorts)
         self.Bind(wx.EVT_MENU, self.resetController, menuReset)
         self.Bind(wx.EVT_MENU, self.onSave, menuSave)
-        self.Bind(wx.EVT_BUTTON, self.XPlus, XPlusButton)
-        self.Bind(wx.EVT_BUTTON, self.XMinus, XMinusButton)
-        self.Bind(wx.EVT_BUTTON, self.YPlus, YPlusButton)
-        self.Bind(wx.EVT_BUTTON, self.YMinus, YMinusButton)
-        self.Bind(wx.EVT_BUTTON, self.ZPlus, ZPlusButton)
-        self.Bind(wx.EVT_BUTTON, self.ZMinus, ZMinusButton)
         
         self.Bind(wx.EVT_BUTTON, self.setHome, setHomeButton)  
 
@@ -192,7 +182,7 @@ class MainWindow(wx.Frame):
         self.rootSizer.Fit(self)     
         
         #	Set preset values
-        self.distanceBox.SetValue('1')
+        self.distCombo.SetValue('.1')
         self.speedBox.SetValue('12')
         
         self.Layout()
@@ -215,7 +205,7 @@ class MainWindow(wx.Frame):
       
       if port.allowKeyboard :	
 	keycode = event.GetKeyCode()
-        #print keycode
+        print keycode
 	if keycode == wx.WXK_ESCAPE :
 	  ret  = wx.MessageBox('Are you sure to quit?', 'Question', 
 	  wx.YES_NO | wx.NO_DEFAULT, self)
@@ -295,6 +285,9 @@ class MainWindow(wx.Frame):
       #global ser
       ret  = wx.MessageBox('Are you sure you want to RESET the controller?', 'Question', 
 	wx.YES_NO | wx.NO_DEFAULT, self)
+      x=0
+      y=0
+      z=0
       if ret == wx.YES:
 	if port.reset() :	
 	  self.showResetOk()
