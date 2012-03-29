@@ -58,10 +58,6 @@ class MainWindow(wx.Frame):
         self.parent = parent 
         self.dirname = '.'       
 	
-		
-	#print "using port " + port
-	#print "using baud " + str(baud)
-	
 	mainFrame = wx.Frame.__init__(self,self.parent, title=title, size=(2048,600))   
         
         filemenu= wx.Menu()
@@ -149,6 +145,7 @@ class MainWindow(wx.Frame):
 	  port.baud = port.configFile.ReadInt('baud') 
 	  port.timeout = port.configFile.ReadInt('timeout')
 	  port.allowKeyboard = port.configFile.Read('allowKeyboard')
+	  #self.keyboardDistance = port.configFile.Read('keyboardDistance'
         
         else:
 	  self.saveOptions()
@@ -162,8 +159,8 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self.resetController, menuReset)
         self.Bind(wx.EVT_MENU, self.onSave, menuSave)
         
-        self.Bind(wx.EVT_BUTTON, self.movePlus, self.plusButton)
-        self.Bind(wx.EVT_BUTTON, self.moveMinus, self.minusButton)
+        self.Bind(wx.EVT_BUTTON, self.incAxis, self.plusButton)
+        self.Bind(wx.EVT_BUTTON, self.decAxis, self.minusButton)
         
         self.Bind(wx.EVT_BUTTON, self.setHome, setHomeButton) 
         self.Bind(wx.EVT_BUTTON, self.goHome, goHomeButton)
@@ -200,9 +197,12 @@ class MainWindow(wx.Frame):
       global y
       global z
       
+      #self.keyboardDistance = 0.005
+      self.keyboardDistance = self.readDistance()
+      
       if port.allowKeyboard :	
 	keycode = event.GetKeyCode()
-        print keycode
+        print "KeyCode: " + str(keycode)
 	if keycode == wx.WXK_ESCAPE :
 	  ret  = wx.MessageBox('Are you sure to quit?', 'Question', 
 	  wx.YES_NO | wx.NO_DEFAULT, self)
@@ -210,22 +210,29 @@ class MainWindow(wx.Frame):
 	    self.Close()
 	  
 	if keycode == 315 :	#	Up Arrow
-	  self.YPlus(None)
+	  #self.YPlus(None)
+	  y = round(y + self.keyboardDistance, 6)
+	  self.move('Y')
 	
 	if keycode == 317 :	#	Down Arrow
-	  self.YMinus(None)
+	  y = round(y - self.keyboardDistance, 6)
+	  self.move('Y')
 	
 	if keycode == 314 :	#	Left Arrow
-	  self.XMinus(None)
+	  x = round(x - self.keyboardDistance , 6)
+	  self.move('X')
 	
 	if keycode == 316 :	#	Right Arrow
-	  self.XPlus(None)
+	  x = round(x + self.keyboardDistance, 6)
+	  self.move('X')
 	
 	if keycode == 366 :	#	Page UP
-	  self.ZPlus(None)
+	  z = round(z + self.keyboardDistance, 6)
+	  self.move('Z')
 	
 	if keycode == 367 :	#	Page Down
-	  self.ZMinus(None)
+	  z = round(z - self.keyboardDistance, 6)
+	  self.move('Z')
       
 	event.Skip()
 	
@@ -354,46 +361,31 @@ class MainWindow(wx.Frame):
       if self.Zrb.GetValue() :
 	return 'Z'      
       
-    def movePlus(self, e) :
+    def incAxis(self, e) :
       global x
       global y
-      global z      
-      print "Move Plus!"
+      global z   
       axis = self.readAxis()
       if axis == 'X' :	
-	x = x + self.readDistance()	
+	x = round(x + self.readDistance(), 6)
       if axis == 'Y' :
-	y = y + self.readDistance()
+	y = round(y + self.readDistance(), 6)
       if axis == 'Z' :
-	z = z + self.readDistance()
-	
-      print axis + ': ' + str(x) + ' ' + str(y) + ' ' + str(z)  
-      self.move(axis)
-      
-      
+	z = round(z + self.readDistance(), 6)
+      self.move(axis)   
      
-    def moveMinus(self, e) :
+    def decAxis(self, e) :
       global x
       global y
-      global z      
-      print "Move Minus!"
+      global z   
       axis = self.readAxis()
       if axis == 'X' :	
-	x = x - self.readDistance()
+	x = round(x - self.readDistance(), 6)
       if axis == 'Y' :
-	y = y - self.readDistance()
+	y = round(y - self.readDistance(), 6)
       if axis == 'Z' :
-	z = z - self.readDistance()
-	
-      print axis + ': ' + str(x) + ' ' + str(y) + ' ' + str(z)
-      self.move(axis)
-	
-	
-    def XPlus (self, e) :  	#	Increment X
-      global x
-      x = x + self.readDistance()
-      self.move('x')    
- 
+	z = round(z - self.readDistance(), 6)
+      self.move(axis) 
       
     def sendCommand(self, command, option) : 
       command = str(command) + " " + str(option + "\n")      
@@ -403,7 +395,7 @@ class MainWindow(wx.Frame):
 	self.showComWriteError()
       
       grbl_response = port.ser.readline() 	# Wait for grbl response with carriage return       
-      self.statusBar.SetStatusText("Sent: " + command.strip() + ": " + "\tReceived: " +grbl_response)
+      self.statusBar.SetStatusText("Sent: " + command.strip() + ": " + "\tReceived: " +grbl_response + '\tPort: ' + port.name)
       
       print "From sendCommand " + grbl_response
       if not grbl_response :
@@ -414,7 +406,6 @@ class MainWindow(wx.Frame):
       global x
       global y
       global z
-      print "Move!"
       try :
 	speed = str(int(self.speedBox.GetValue()))
 	print speed
@@ -436,22 +427,22 @@ class MainWindow(wx.Frame):
       
       try :
 	port.ser.write(dirCommand)
-	print "Sent: " + dircommand
+	
       except :
-	self.showComWriteError()
+	self.showComWriteError()      
+      grbl_response = port.ser.readline() 	# Wait for grbl response with carriage return      
+
+      self.statusBar.SetStatusText('Port: ' + port.name + "\tSent: " + dirCommand.strip() + ": " + "\tReceived: " +grbl_response.strip())
       
-      grbl_response = port.ser.readline() 	# Wait for grbl response with carriage return       
-      self.statusBar.SetStatusText("Sent: " + dirCommand.strip() + ": " + "\tReceived: " +grbl_response)
+      print "Sent: " + dirCommand.strip() + '\tReceived: ' + grbl_response
       
-      print grbl_response
-      if not grbl_response :
+      if grbl_response.strip() != "ok" :
 	self.showComTimeoutError()
     
 
 class configSerial(wx.Dialog):
     def __init__(self, parent, id, title = "Configure Serial Port"):
-        #global ser
-
+      
 	self.parent= parent
 	self.id = id
 
@@ -549,8 +540,7 @@ class configSerial(wx.Dialog):
     def cancel(self, e) :
       self.Close(True)
 
-    def done(self, e) :
-        #global ser	
+    def done(self, e) :	
         port.name = self.portsCombo.GetValue()
         port.baud = int(self.baudCombo.GetValue())
         port.dataBits = int(self.bitsCombo.GetValue())
@@ -571,13 +561,9 @@ class configSerial(wx.Dialog):
         if self.ports != "No Ports Found" :
            #ser = serial.Serial(port= port.name, baudrate= port.baud, bytesize=port.dataBits, parity= port.parity,\
            # stopbits=port.stopBit, timeout = None, xonxoff= port.xonxoff, rtscts=port.rtscts)
-           port.ser = serial.Serial(port.name, port.baud, timeout=port.timeout)
-           #ser = serial.Serial('/dev/ttyACM0', 9600, timeout=2)	      
+           port.ser = serial.Serial(port.name, port.baud, timeout=port.timeout)       
 
-          
-        print "Name: " + port.name
         port.flushSerial()
-		
         self.Close(True)                
         
     def autoDetect(self, e) :
@@ -620,6 +606,7 @@ class Port() :		# Dummy class to encapsulate the serial port attributes;  Cleane
     self.allowKeyboard = True    
     self.configFile = wx.Config('grblJoggerConfig')
     self.ser =  serial.Serial() 
+
   
   def flushSerial(self) :  
     time.sleep(2)
