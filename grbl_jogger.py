@@ -43,16 +43,20 @@ import  wx.lib.newevent
 
 version = "0.1"
 
+
+  
+serialEVT, EVT_SERIAL = wx.lib.newevent.NewEvent()  
+
+# Global Variables
+lastTime = time.time()
 x = 0	# Location of X Axis
 y = 0	# Location of Y Axis
 z = 0	# Location of Z Axis
-  
-serialEVT, EVT_SERIAL = wx.lib.newevent.NewEvent()  
 
 class MainWindow(wx.Frame):
     def __init__(self, parent, title="Grbl_Jogger") : 	
 	#global ser
-	global configFile
+	#global configFile
 	
 	self.distanceList = ['1.0', '0.1', '0.05', '0.01', '0.005', '0.001']
         self.parent = parent 
@@ -140,15 +144,7 @@ class MainWindow(wx.Frame):
         self.rootSizer.Add(self.editorSizer1, 3, wx.EXPAND)        
         self.rootSizer.Add(self.editorSizer2, 1, wx.EXPAND)       
 	
-        if port.configFile.Exists('port'):	
-	  port.name = port.configFile.Read('port')
-	  port.baud = port.configFile.ReadInt('baud') 
-	  port.timeout = port.configFile.ReadInt('timeout')
-	  port.allowKeyboard = port.configFile.Read('allowKeyboard')
-	  #self.keyboardDistance = port.configFile.Read('keyboardDistance'
-        
-        else:
-	  self.saveOptions()
+
 	  
 	#___________Bind Events_______________________________
         self.Bind(wx.EVT_CLOSE, self.onExit)        
@@ -196,11 +192,23 @@ class MainWindow(wx.Frame):
       global x
       global y
       global z
+      global lastTime
       
       #self.keyboardDistance = 0.005
       self.keyboardDistance = self.readDistance()
+      currentTime = time.time() 
+      timeDifference = currentTime - lastTime
       
-      if port.allowKeyboard :	
+      print "CT: " + str(currentTime) + '\t' + 'TD: ' + str(timeDifference) + '\tRP: ' + str(port.keyRepeat)
+      
+      if timeDifference >= (port.keyRepeat/1000) :	
+	lastTime = time.time()
+	print "RESETTING: " + str(timeDifference)
+      
+      if port.allowKeyboard :
+	#print "RESETTING"
+	#print lastTime
+	#lastTime = time.time()
 	keycode = event.GetKeyCode()
         print "KeyCode: " + str(keycode)
 	if keycode == wx.WXK_ESCAPE :
@@ -250,7 +258,7 @@ class MainWindow(wx.Frame):
     def setupPort(self, e) :        
       dia = configSerial(self, -1)
       dia.ShowModal()
-      self.saveOptions()   
+      #self.saveOptions()   
       
       dia.Destroy() 
 	
@@ -297,21 +305,13 @@ class MainWindow(wx.Frame):
 	  self.showResetOk()
 	  
 	else :
-	  self.showResetFailed()
-    
-    def saveOptions(self) :	
-	port.configFile.Write("port", port.name)
-        port.configFile.WriteInt("baud", port.baud)
-        port.configFile.WriteInt("timeout", port.timeout)
-        port.configFile.WriteInt("allowKeyboard", port.allowKeyboard)          
-	port.configFile.Flush()       
-        print "Saved Options"
+	  self.showResetFailed()   
+
     
     def showComError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Could not open COM port!", 'Error!', wx.OK | wx.ICON_ERROR)  
         dlg.ShowModal()
-        self.setupPort(None)
-        #self.saveOptions()	
+        self.setupPort(None)	
         
     def showComWriteError(self) :     #	Can't open COM port
         dlg = wx.MessageDialog(self, "Error writing to Com port!", 'Error!', wx.OK | wx.ICON_ERROR)  
@@ -402,7 +402,6 @@ class MainWindow(wx.Frame):
 	self.showComTimeoutError()
     
     def move(self, axis) :   
-      #global ser
       global x
       global y
       global z
@@ -564,7 +563,9 @@ class configSerial(wx.Dialog):
            port.ser = serial.Serial(port.name, port.baud, timeout=port.timeout)       
 
         port.flushSerial()
-        self.Close(True)                
+        self.Close(True)    
+        
+        port.saveOptions()
         
     def autoDetect(self, e) :
         print "To be added"
@@ -594,24 +595,37 @@ class configSerial(wx.Dialog):
                 
         return self.ports  
         
-class Port() :		# Dummy class to encapsulate the serial port attributes;  Cleaner than global  also a couple of helper methods
+class Port() :		# Dummy class to encapsulate the port and config attributes;  Cleaner than global  also a couple of helper methods
   def __init__(self) : 
-    self.name = '/dev/ttyACM0'
-    self.baud = 0
-    self.dataBits = 8
-    self.parity = 'n'
-    self.stopBits = 1
-    self.timeout = 1
-    self.rtscts = 0
-    self.allowKeyboard = True    
-    self.configFile = wx.Config('grblJoggerConfig')
-    self.ser =  serial.Serial() 
+    self.name = '/dev/ttyACM0'		# Serial port name
+    self.baud = 0			# Baud rate
+    self.dataBits = 8			# data bits 
+    self.parity = 'n'			# Whether or not to use parity
+    self.stopBits = 1			# Number of stop bits
+    self.timeout = 1			# Serial port timeout in seconds
+    self.rtscts = 0			# Hardware flow control.  0=off, 1=on
+    self.allowKeyboard = True    	# Allow keyboard shortcuts
+    self.configFile = wx.Config('grblJoggerConfig')	# Configfile name.  Default location is home
+    self.ser =  serial.Serial()     	# Serial port instance
+    self.keyRepeat = 200			# mS delay to use when sending keycord commands.  
+    
+    
+    if self.configFile.Exists('port'):	
+      self.name = self.configFile.Read('port')
+      self.baud = self.configFile.ReadInt('baud') 
+      self.timeout = self.configFile.ReadInt('timeout')
+      self.allowKeyboard = self.configFile.Read('allowKeyboard')
+      self.keyRepeat = self.configFile.ReadInt('keyRepeat')
+	  #self.keyboardDistance = port.configFile.Read('keyboardDistance'
+        
+    else:
+      self.saveOptions()    
 
   
   def flushSerial(self) :  
     time.sleep(2)
-    port.ser.flushInput()    
-    port.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
+    self.ser.flushInput()    
+    self.ser.write("G20\n")		# yeah, we only use this in the US.  Everyone else should make this metric
     print "Trying: " + self.ser.readline()
       
   def reset(self) :
@@ -622,6 +636,16 @@ class Port() :		# Dummy class to encapsulate the serial port attributes;  Cleane
       return 1
     except :
       return 0
+      
+  def saveOptions(self) :
+    print "Saving"
+    self.configFile.Write("port", self.name)
+    self.configFile.WriteInt("baud", self.baud)
+    self.configFile.WriteInt("timeout", self.timeout)
+    self.configFile.WriteInt("allowKeyboard", self.allowKeyboard)  
+    self.configFile.WriteInt("keyRepeat", self.keyRepeat)
+    self.configFile.Flush()       
+    print "Saved Options"
  
     
     
